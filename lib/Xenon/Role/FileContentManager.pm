@@ -4,6 +4,11 @@ use warnings;
 
 use v5.10;
 
+use Readonly;
+Readonly my $NOCHANGE      = 0;
+Readonly my $CHANGE_NEW    = 1;
+Readonly my $CHANGE_UPDATE = 2;
+
 use Digest ();
 use English qw(-no_match_vars);
 use File::Temp ();
@@ -93,26 +98,34 @@ sub path_type_is_correct {
 }
 
 sub content_needs_update {
-    my ( $self, $data ) = @_;
+    my ( $self, $new_digest ) = @_;
 
     my $path = $self->path;
 
-    my $needs_update = 1;
+    my $needs_update = $CHANGE_NEW;
     if ( $path->exists ) {
-
-        my $ctx = Digest->new($self->digest_algorithm);
-        $ctx->add($data);
-        my $new_digest = $ctx->hexdigest();
 
         my $cur_digest = $path->digest($self->digest_algorithm);
 
         if ( $new_digest eq $cur_digest ) {
-            $needs_update = 0;
+            $needs_update = $NOCHANGE;
+        } else {
+            $needs_update = $CHANGE_UPDATE;
         }
 
     }
 
     return $needs_update;
+}
+
+sub digest_data {
+    my ( $self, $data ) = @_;
+
+    my $ctx = Digest->new($self->digest_algorithm);
+    $ctx->add($data);
+    my $digest = $ctx->hexdigest();
+
+    return $digest;
 }
 
 sub build {
@@ -124,9 +137,11 @@ sub build {
         $input = $enc_type->decode($input);
     }
 
-    my $data = $self->build_data($input);
+    my $data   = $self->build_data($input);
+    my $digest = $self->digest_data($data);
 
-    if ( $self->content_needs_update($data) ) {
+    my $needs_update = $self->content_needs_update($digest);
+    if ( $needs_update != $NOCHANGE ) {
         say STDERR "Content needs update";
 
         my $path = $self->path;
@@ -164,7 +179,7 @@ sub build {
 
     }
 
-    return;
+    return ( $needs_update, $digest );
 }
 
 sub make_backup {
