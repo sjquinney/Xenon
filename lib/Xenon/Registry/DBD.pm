@@ -7,11 +7,12 @@ use v5.10;
 use DBI qw(:sql_types);
 use SQL::Abstract ();
 
+my $REGISTRY_TABLE = 'path_registry';
 my %INT_COLUMNS = (
-    'mtime' => 1,
-    'mode'  => 1,
-    'uid'   => 1,
-    'gid'   => 1,
+    mtime => 1,
+    mode  => 1,
+    uid   => 1,
+    gid   => 1,
 );
 
 use Moo;
@@ -54,8 +55,8 @@ sub connection {
     my $dbh = DBI->connect_cached( @args, { AutoCommit => 1, RaiseError => 1 } )
         or die $DBI::errstr . "\n";
 
-    my $create_table = <<'EOT';
-CREATE TABLE IF NOT EXISTS path_registry (
+    my $create_table = <<"EOT";
+CREATE TABLE IF NOT EXISTS $REGISTRY_TABLE (
     tag               VARCHAR(50)  NOT NULL,
     pathname          VARCHAR(200) PRIMARY KEY,
     pathtype          VARCHAR(20),
@@ -68,8 +69,8 @@ CREATE TABLE IF NOT EXISTS path_registry (
     permanent         BOOLEAN DEFAULT false)
 EOT
 
-$dbh->do($create_table)
-or die 'Failed to create registry database table: ' . $dbh->errstr . "\n";
+    $dbh->do($create_table)
+      or die 'Failed to create registry database table: ' . $dbh->errstr . "\n";
 
     return $dbh;
 }
@@ -78,9 +79,14 @@ sub path_is_registered {
     my ( $self, $path ) = @_;
 
     my $dbh = $self->connection;
-    my $sth = $dbh->prepare_cached('SELECT * FROM path_registry WHERE pathname = ?');
+    my $sqla = SQL::Abstract->new();
 
-    $sth->execute($path);
+    my ( $stmt, @bind ) = $sqla->select( $REGISTRY_TABLE, '*',
+                                         { pathname => $path } );
+
+    my $sth = $dbh->prepare_cached($stmt);
+    $sth->execute(@bind);
+
     my $result = $sth->fetchrow_hashref;
 
     my $registered = defined $result ? 1 : 0;
@@ -93,9 +99,13 @@ sub paths_for_tag {
     my ( $self, $tag ) = @_;
 
     my $dbh = $self->connection;
-    my $sth = $dbh->prepare_cached('SELECT pathname FROM path_registry WHERE tag = ?');
+    my $sqla = SQL::Abstract->new();
 
-    $sth->execute($tag);
+    my ( $stmt, @bind ) = $sqla->select( $REGISTRY_TABLE, ['pathname'],
+                                         { tag => $tag } );
+
+    my $sth = $dbh->prepare_cached($stmt);
+    $sth->execute(@bind);
 
     my $results = $sth->fetchall_arrayref([0]);
 
@@ -121,7 +131,7 @@ sub deregister_path {
 
         my $dbh = $self->connection;
         my $sqla = SQL::Abstract->new();
-        my ( $stmt, @bind ) = $sqla->delete( 'path_registry',
+        my ( $stmt, @bind ) = $sqla->delete( '$REGISTRY_TABLE',
                                              { pathname => $path,
                                                tag      => $tag } );
 
@@ -163,10 +173,10 @@ sub register_path {
             die "Cannot register path '$path' with tag '$tag', it is owned by '$cur_tag'\n";
         }
 
-        ( $stmt, @bind ) = $sqla->update( 'path_registry', \%data,
+        ( $stmt, @bind ) = $sqla->update( $REGISTRY_TABLE, \%data,
                                           { pathname => $path } );
     } else { # insert
-        ( $stmt, @bind ) = $sqla->insert( 'path_registry', \%data );
+        ( $stmt, @bind ) = $sqla->insert( $REGISTRY_TABLE, \%data );
     }
 
     try {
