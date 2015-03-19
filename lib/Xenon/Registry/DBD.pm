@@ -5,6 +5,14 @@ use warnings;
 use v5.10;
 
 use DBI qw(:sql_types);
+use SQL::Abstract ();
+
+my %INT_COLUMNS = (
+    'mtime' => 1,
+    'mode'  => 1,
+    'uid'   => 1,
+    'gid'   => 1,
+);
 
 use Moo;
 use Types::Standard qw(Str);
@@ -102,78 +110,51 @@ sub paths_for_tag {
 sub register_path {
     my ( $self, $tag, $path, $permanent, $meta_ref ) = @_;
 
-    my %meta = $self->path_metadata( $path, $meta_ref );
+    my %data = $self->path_metadata( $path, $meta_ref );
+    $data{tag}       = $tag;
+    $data{pathname}  = $path;
+    $data{permanent} = $permanent;
 
     my $dbh = $self->connection;
-    my $sth = $dbh->prepare_cached('SELECT tag, pathname FROM path_registry WHERE pathname = ?');
+    my $sqla = SQL::Abstract->new( bindtype => 'columns' );
 
-    $sth->execute($path);
-    my $entry = $sth->fetchrow_hashref();
+    my $check = $dbh->prepare_cached('SELECT tag, pathname FROM path_registry WHERE pathname = ?');
 
-    my $sql;
-    my $change_type;
-    if ( defined $entry ) {
-        $change_type = 'update';
+    $check->execute($path);
+    my $entry = $check->fetchrow_hashref();
+
+    my($stmt, @bind);
+
+    if ( defined $entry ) { # update
 
         my $cur_tag = $entry->{tag};
         if ( $cur_tag ne $tag ) {
             die "Cannot register path '$path' with tag '$tag', it is owned by '$cur_tag'\n";
         }
 
-        $sql = <<'EOT';
-UPDATE path_registry SET
-   pathtype  = ?,
-   digest    = ?,
-   digest_algorithm = ?,
-   permanent = ?,
-   mtime     = ?,
-   mode      = ?,
-   uid       = ?,
-   gid       = ?
-WHERE pathname = ?
-EOT
-
-    } else {
-        $change_type = 'insert';
-
-        $sql = <<'EOT';
-INSERT INTO path_registry (tag, pathname, pathtype, digest, digest_algorithm, permanent, mtime, mode, uid, gid ) VALUES (?,?,?,?,?,?,?,?,?,?)
-EOT
-
+        ( $stmt, @bind ) = $sqla->update( 'path_registry', \%data,
+                                          { pathname => $path } );
+    } else { # insert
+        ( $stmt, @bind ) = $sqla->insert( 'path_registry', \%data );
     }
 
-    my $register = $dbh->prepare_cached($sql);
-
-    # bind parameters separately so that some can be specified with
-    # the SQL_INTEGER type for SQLite.
-
-    my $param = 1;
-
-    if ( $change_type eq 'insert' ) {
-        $register->bind_param( 1, $tag );
-        $register->bind_param( 2, $path );
-
-        $param = 3;
-    }
-
-    for my $key ( 'pathtype', 'digest', 'digest_algorithm' ) {
-        $register->bind_param( $param, $meta{$key} // q{} );
-        $param++;
-    }
-
-    $register->bind_param( $param, $permanent ? 1 : 0 );
-    $param++;
-
-    for my $key ( 'mtime', 'mode', 'uid', 'gid' ) {
-        $register->bind_param( $param, $meta{$key} // -1, SQL_INTEGER );
-        $param++;
-    }
-
-    if ( $change_type eq 'update' ) {
-        $register->bind_param( $param, $path );
-    }
+    say $stmt;
 
     try {
+
+        my $register = $dbh->prepare_cached($stmt);
+
+        my $i = 1;
+        for my $bind (@bind) {
+            my( $col, $data ) = @{$bind};
+            if ($INT_COLUMNS{$col}) {
+                $register->bind_param( $i, $data, SQL_INTEGER );
+            } else {
+                $register->bind_param( $i, $data );
+            }
+            $i++;
+        }
+
         $dbh->begin_work or die $dbh->errstr;
 
         $register->execute() or die $dbh->errstr;
