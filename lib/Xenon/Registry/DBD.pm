@@ -107,6 +107,40 @@ sub paths_for_tag {
     return @paths;
 }
 
+sub deregister_path {
+    my ( $self, $tag, $path ) = @_;
+
+    my ( $is_registered, $entry ) = $self->path_is_registered($path);
+
+    if ($is_registered) {
+
+        my $cur_tag = $entry->{tag};
+        if ( $cur_tag ne $tag ) {
+            die "Cannot deregister path '$path' with tag '$tag', it is owned by '$cur_tag'\n";
+        }
+
+        my $dbh = $self->connection;
+        my $sqla = SQL::Abstract->new();
+        my ( $stmt, @bind ) = $sqla->delete( 'path_registry',
+                                             { pathname => $path,
+                                               tag      => $tag } );
+
+        try {
+            my $sth = $dbh->prepare_cached($stmt);
+
+            $dbh->begin_work();
+            $sth->execute(@bind);
+            $dbh->commit();
+
+        } catch {
+            die "Failed to deregister path '$path': $_\n";
+        };
+
+    }
+
+    return;
+}
+
 sub register_path {
     my ( $self, $tag, $path, $permanent, $meta_ref ) = @_;
 
@@ -118,14 +152,11 @@ sub register_path {
     my $dbh = $self->connection;
     my $sqla = SQL::Abstract->new( bindtype => 'columns' );
 
-    my $check = $dbh->prepare_cached('SELECT tag, pathname FROM path_registry WHERE pathname = ?');
-
-    $check->execute($path);
-    my $entry = $check->fetchrow_hashref();
+    my ( $is_registered, $entry ) = $self->path_is_registered($path);
 
     my($stmt, @bind);
 
-    if ( defined $entry ) { # update
+    if ($is_registered) { # update
 
         my $cur_tag = $entry->{tag};
         if ( $cur_tag ne $tag ) {
@@ -137,8 +168,6 @@ sub register_path {
     } else { # insert
         ( $stmt, @bind ) = $sqla->insert( 'path_registry', \%data );
     }
-
-    say $stmt;
 
     try {
 
@@ -155,11 +184,11 @@ sub register_path {
             $i++;
         }
 
-        $dbh->begin_work or die $dbh->errstr;
+        $dbh->begin_work();
 
-        $register->execute() or die $dbh->errstr;
+        $register->execute();
 
-        $dbh->commit() or die $dbh->errstr;
+        $dbh->commit();
     } catch {
         die "Failed to register path '$path': $_\n";
     };
