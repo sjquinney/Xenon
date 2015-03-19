@@ -7,12 +7,14 @@ use v5.10;
 use DBI qw(:sql_types);
 use SQL::Abstract ();
 
-my $REGISTRY_TABLE = 'path_registry';
-my %INT_COLUMNS = (
-    mtime => 1,
-    mode  => 1,
-    uid   => 1,
-    gid   => 1,
+use Readonly;
+Readonly my $REGISTRY_TABLE => 'path_registry';
+Readonly my %INT_COLUMNS => (
+    mtime   => 1,
+    mode    => 1,
+    uid     => 1,
+    gid     => 1,
+    regtime => 1,
 );
 
 use Moo;
@@ -66,7 +68,8 @@ CREATE TABLE IF NOT EXISTS $REGISTRY_TABLE (
     mode              INTEGER,
     uid               INTEGER,
     gid               INTEGER,
-    permanent         BOOLEAN DEFAULT false)
+    permanent         BOOLEAN DEFAULT false,
+    regtime           INTEGER)
 EOT
 
     $dbh->do($create_table)
@@ -158,6 +161,7 @@ sub register_path {
     $data{tag}       = $tag;
     $data{pathname}  = $path;
     $data{permanent} = $permanent;
+    $data{regtime}   = time;
 
     my $dbh = $self->connection;
     my $sqla = SQL::Abstract->new( bindtype => 'columns' );
