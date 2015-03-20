@@ -45,9 +45,14 @@ role_type XenonContentDecoder, { role => 'Xenon::Role::ContentDecoder' };
 
 coerce XenonContentDecoder,
     from Str, via {
+        my ( $modname, $modargs ) = split /\s*:\s*/, $_, 2;
         my $mod =
-            Xenon::TypeUtils::load_role_module( $_, 'Xenon::ContentDecoder' );
-        $mod->new();
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::ContentDecoder' );
+        if ( defined $modargs ) {
+            $mod->new_from_json(\$modargs);
+        } else {
+            $mod->new();
+        }
 };
 
 declare XenonContentDecoderList,
