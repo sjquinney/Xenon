@@ -21,7 +21,7 @@ sub _build_pathtype {
 }
 
 sub default_mode {
-    return '0755';
+    return oct('0755');
 }
 
 sub path_type_is_correct {
@@ -46,7 +46,7 @@ sub build {
                 $options{group} = $self->group;
             }
             if ( $self->has_mode ) {
-                $options{mode} = oct $self->mode;
+                $options{mode} = $self->mode;
             }
 
             $target->mkpath( \%options );

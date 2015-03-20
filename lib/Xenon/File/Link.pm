@@ -16,7 +16,7 @@ sub _build_pathtype {
 }
 
 sub default_mode {
-    return '0777';
+    return oct('0777');
 }
 
 sub path_type_is_correct {

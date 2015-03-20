@@ -13,7 +13,7 @@ use Type::Library
                    XenonContentDecoder XenonContentDecoderList);
 
 use Type::Utils -all;
-use Types::Standard qw(ArrayRef HashRef Int ScalarRef Str);
+use Types::Standard qw(ArrayRef HashRef Int ScalarRef Str Value);
 use Types::Common::Numeric qw(PositiveOrZeroInt);
 
 use Xenon::TypeUtils ();
@@ -85,12 +85,12 @@ coerce XenonFileManagerList,
 enum XenonBackupStyle, ['tilde','none','epochtime'];
 
 declare UnixMode,
-    as Str,
-    where { m/^0[0-7]{1,4}$/ },
+    as PositiveOrZeroInt,
+    where   { !m/^0/ }, # forces coercion via oct()
     message { "$_ is not a valid unix file mode" };
 
 coerce UnixMode,
-    from Str, via { oct $_ };
+    from Value, via { /^0\d+$/ ? oct $_ : $_ };
 
 declare UID,
     as PositiveOrZeroInt,

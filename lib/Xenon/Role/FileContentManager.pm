@@ -88,7 +88,7 @@ sub merge_options {
 }
 
 sub default_mode {
-    return '0644';
+    return oct('0644');
 }
 
 sub path_type_is_correct {

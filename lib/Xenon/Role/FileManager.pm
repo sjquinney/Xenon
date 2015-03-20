@@ -199,7 +199,7 @@ sub required_mode {
 
     my $required_mode;
     if ( $self->has_mode ) {
-        $required_mode = oct $self->mode;
+        $required_mode = $self->mode;
     } else {
 
         # If nothing is specified then we use the current mode if
@@ -209,7 +209,7 @@ sub required_mode {
         if ( $self->path->is_file ) {
             $required_mode = $self->path->stat->mode & 07777;
         } else {
-            $required_mode = oct $self->default_mode;
+            $required_mode = $self->default_mode;
         }
 
         # Honour the umask which might tighten the mode settings
@@ -259,7 +259,7 @@ sub set_access_controls {
 
     if ( $current_mode != $required_mode ) {
         say STDERR "chmod $required_mode $path";
-        chmod $required_mode, "$path"
+        $path->chmod($required_mode)
             or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
     }
 
