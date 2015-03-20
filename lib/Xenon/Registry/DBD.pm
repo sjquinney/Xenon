@@ -81,6 +81,9 @@ EOT
 sub path_is_registered {
     my ( $self, $path ) = @_;
 
+    $path = "$path"; # Might be a Path::Tiny object, force stringification
+    $path =~ s{/+$}{};
+
     my $dbh = $self->connection;
     my $sqla = SQL::Abstract->new();
 
@@ -123,6 +126,9 @@ sub paths_for_tag {
 sub deregister_path {
     my ( $self, $tag, $path ) = @_;
 
+    $path = "$path"; # Might be a Path::Tiny object, force stringification
+    $path =~ s{/+$}{};
+
     my ( $is_registered, $entry ) = $self->path_is_registered($path);
 
     if ($is_registered) {
@@ -159,7 +165,11 @@ sub register_path {
 
     my %data = $self->path_metadata( $path, $meta_ref );
     $data{tag}       = $tag;
-    $data{pathname}  = $path;
+
+    # Might be a Path::Tiny object, force stringification
+    $data{pathname}  = "$path";
+    $data{pathname}  =~ s{/+$}{};
+
     $data{permanent} = $permanent;
     $data{regtime}   = time;
 
