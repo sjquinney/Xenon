@@ -16,6 +16,10 @@ has '+source' => (
     required => 0,
 );
 
+sub _build_pathtype {
+    return 'directory';
+}
+
 sub default_mode {
     return '0755';
 }

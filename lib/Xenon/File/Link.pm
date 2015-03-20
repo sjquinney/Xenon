@@ -11,6 +11,10 @@ use namespace::clean;
 
 with 'Xenon::Role::FileManager';
 
+sub _build_pathtype {
+    return 'link';
+}
+
 sub default_mode {
     return '0777';
 }

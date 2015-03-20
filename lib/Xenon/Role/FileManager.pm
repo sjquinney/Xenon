@@ -25,6 +25,14 @@ has 'id' => (
     default   => sub { $_[0]->path->stringify },
 );
 
+has 'pathtype' => (
+    is       => 'ro',
+    isa      => Str,
+    required => 1,
+    lazy     => 1,
+    builder  => '_build_pathtype',
+);
+
 has 'path' => (
     is       => 'ro',
     isa      => AbsPath,
@@ -70,6 +78,33 @@ has 'zap' => (
     isa     => Bool,
     default => sub { 0 },
 );
+
+has 'permanent' => (
+    is      => 'ro',
+    isa     => Bool,
+    default => sub { 0 },
+);
+
+# Sensible default behaviour. Typically the class which implements
+# this role will provide a local version of the method which just
+# simply returns the correct path type.
+
+sub _build_pathtype {
+    my ($self) = @_;
+
+    my $pathtype;
+    if ( $self->path->is_file ) {
+        if ( -l $self->path->path ) {
+            $pathtype = 'link';
+        } else {
+            $pathtype = 'file';
+        }
+    } else {
+        $pathtype = 'directory';
+    }
+
+    return $pathtype;
+}
 
 sub BUILDARGS {
   my ( $class, @args ) = @_;

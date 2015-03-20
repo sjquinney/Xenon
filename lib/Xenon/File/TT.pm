@@ -9,6 +9,10 @@ use namespace::clean;
 
 with 'Xenon::Role::FileContentManager';
 
+sub _build_pathtype {
+    return 'file';
+}
+
 sub default_options {
     return {
         POST_CHOMP => 1,
