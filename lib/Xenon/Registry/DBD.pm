@@ -19,6 +19,7 @@ Readonly my %INT_COLUMNS => (
 
 use Moo;
 use Types::Standard qw(Str);
+use Types::Path::Tiny qw(AbsPath);
 use Try::Tiny;
 
 with 'Xenon::Role::Registry';
@@ -81,14 +82,16 @@ EOT
 sub path_is_registered {
     my ( $self, $path ) = @_;
 
-    $path = "$path"; # Might be a Path::Tiny object, force stringification
-    $path =~ s{/+$}{};
+    # Using Path::Tiny to ensure path is handled consistently
+    if ( !AbsPath->check($path) ) {
+        $path = AbsPath->coerce($path);
+    }
 
     my $dbh = $self->connection;
     my $sqla = SQL::Abstract->new();
 
     my ( $stmt, @bind ) = $sqla->select( $REGISTRY_TABLE, '*',
-                                         { pathname => $path } );
+                                         { pathname => "$path" } );
 
     my $sth = $dbh->prepare_cached($stmt);
     $sth->execute(@bind);
@@ -117,17 +120,35 @@ sub paths_for_tag {
 
     my @paths;
     if ( defined $results ) {
-        @paths = map { @{$_} } @{$results};
+        @paths = map { AbsPath->coerce( ${$_}[0] ) } @{$results};
     }
 
     return @paths;
 }
 
+sub get_data_for_path {
+    my ( $self, $path ) = @_;
+
+    # Using Path::Tiny to ensure path is handled consistently
+    if ( !AbsPath->check($path) ) {
+        $path = AbsPath->coerce($path);
+    }
+
+    my ( $is_registered, $entry ) = $self->path_is_registered($path);
+    if ( !$is_registered ) {
+        die "No entry in registry for path '$path'\n";
+    }
+
+    return $entry;
+}
+
 sub deregister_path {
     my ( $self, $tag, $path ) = @_;
 
-    $path = "$path"; # Might be a Path::Tiny object, force stringification
-    $path =~ s{/+$}{};
+    # Using Path::Tiny to ensure path is handled consistently
+    if ( !AbsPath->check($path) ) {
+        $path = AbsPath->coerce($path);
+    }
 
     my ( $is_registered, $entry ) = $self->path_is_registered($path);
 
@@ -141,7 +162,7 @@ sub deregister_path {
         my $dbh = $self->connection;
         my $sqla = SQL::Abstract->new();
         my ( $stmt, @bind ) = $sqla->delete( '$REGISTRY_TABLE',
-                                             { pathname => $path,
+                                             { pathname => "$path",
                                                tag      => $tag } );
 
         try {
@@ -163,13 +184,14 @@ sub deregister_path {
 sub register_path {
     my ( $self, $tag, $path, $permanent, $meta_ref ) = @_;
 
+    # Using Path::Tiny to ensure path is handled consistently
+    if ( !AbsPath->check($path) ) {
+        $path = AbsPath->coerce($path);
+    }
+
     my %data = $self->path_metadata( $path, $meta_ref );
     $data{tag}       = $tag;
-
-    # Might be a Path::Tiny object, force stringification
     $data{pathname}  = "$path";
-    $data{pathname}  =~ s{/+$}{};
-
     $data{permanent} = $permanent;
     $data{regtime}   = time;
 
@@ -178,7 +200,7 @@ sub register_path {
 
     my ( $is_registered, $entry ) = $self->path_is_registered($path);
 
-    my($stmt, @bind);
+    my ($stmt, @bind);
 
     if ($is_registered) { # update
 
@@ -188,7 +210,8 @@ sub register_path {
         }
 
         ( $stmt, @bind ) = $sqla->update( $REGISTRY_TABLE, \%data,
-                                          { pathname => $path } );
+                                          { pathname => "$path",
+                                            tag      => $tag } );
     } else { # insert
         ( $stmt, @bind ) = $sqla->insert( $REGISTRY_TABLE, \%data );
     }
