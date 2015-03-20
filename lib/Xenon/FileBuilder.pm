@@ -59,8 +59,16 @@ sub configure {
 
     my @files = @{ $self->files };
 
+    my %current_paths;
     for my $file (@files) {
         my $id = $file->id;
+
+        # Whether we succeed or fail to configure the file we want to
+        # push the path onto the list so that it doesn't get removed
+        # or deregistered.
+
+        $current_paths{$file->path} = $file;
+
         try {
             say STDERR 'Configuring ' . $id;
             $file->configure();
@@ -70,9 +78,41 @@ sub configure {
                     $self->tag, $file->path, $file->permanent,
                 );
             }
+
         } catch {
             warn "Failed to configure file '$id': $_\n"; 
         };
+
+        if ( $self->has_registry ) {
+            my @registered_paths = $self->registry->paths_for_tag($self->tag);
+
+            for my $path (@registered_paths) {
+                if ( !$current_paths{$path->path} ) {
+                    my $entry = $self->registry->get_entry_for_path($path);
+
+                    if ( !$entry->{permanent} ) {
+                        try {
+                            if ( $path->is_dir ) {
+                                if ( scalar $path->children > 0 ) {
+                                    die "non-empty directory\n";
+                                } else {
+                                    rmdir $path or die "$!\n";
+                                }
+                            } else {
+                                $path->remove or die "$!\n";
+                            }
+                        } catch {
+                            warn "Failed to remove path '$path': $_";
+                        } finally {
+                            $self->registry->deregister_path( $self->tag, $path );
+                        };
+                    }
+
+                }
+            }
+
+        }
+
     }
 
     return;
