@@ -7,7 +7,7 @@ use v5.10;
 use Moo::Role;
 use Types::Path::Tiny qw(AbsPath);
 
-requires 'register_path', 'deregister_path', 'path_is_registered';
+requires 'register_path', 'deregister_path', 'path_is_registered', 'paths_for_tag';
 
 sub path_metadata {
     my ( $self, $path, $meta_ref ) = @_;
