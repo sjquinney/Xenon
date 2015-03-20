@@ -7,7 +7,7 @@ use v5.10;
 use Moo;
 use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
-use Xenon::Types qw(XenonFileManager XenonFileManagerList);
+use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use namespace::clean;
 
 has 'files' => (
@@ -18,8 +18,29 @@ has 'files' => (
     lazy    => 1,
 );
 
+has 'registry' => (
+    is        => 'ro',
+    isa       => XenonRegistry,
+    predicate => 'has_registry',
+);
+
+has 'tag'      => (
+    is        => 'ro',
+    isa       => Str,
+    predicate => 'has_tag',
+);
+
 sub _build_files {
     return [];
+}
+
+sub BUILD {
+    my ($self) = @_;
+
+    if ( $self->has_registry && !$self->has_tag ) {
+        die "Registry specified but no tag name given\n";
+    }
+
 }
 
 sub add_file {
@@ -43,6 +64,12 @@ sub configure {
         try {
             say STDERR 'Configuring ' . $id;
             $file->configure();
+
+            if ( $self->has_registry ) {
+                $self->registry->register_path(
+                    $self->tag, $file->path, $file->permanent,
+                );
+            }
         } catch {
             warn "Failed to configure file '$id': $_\n"; 
         };

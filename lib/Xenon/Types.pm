@@ -9,6 +9,7 @@ use Type::Library
     -declare => qw(UID GID UnixMode
                    XenonResource XenonBackupStyle XenonURI
                    XenonFileManager XenonFileManagerList
+                   XenonRegistry
                    XenonContentDecoder XenonContentDecoderList);
 
 use Type::Utils -all;
@@ -20,6 +21,8 @@ use Xenon::TypeUtils ();
 class_type XenonURI, { class => 'URI' };
 coerce XenonURI,
     from Str, via { require URI; URI->new($_) };
+
+role_type XenonRegistry, { role => 'Xenon::Role::Registry' };
 
 role_type XenonResource, { role => 'Xenon::Role::Resource' };
 
