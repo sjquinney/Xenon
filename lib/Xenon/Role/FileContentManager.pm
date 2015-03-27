@@ -18,7 +18,7 @@ use Try::Tiny;
 
 use Moo::Role;
 
-with 'Xenon::Role::FileManager';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
 
 requires 'build_data', 'default_options';
 
@@ -142,7 +142,7 @@ sub build {
 
     my $needs_update = $self->content_needs_update($digest);
     if ( $needs_update != $NOCHANGE ) {
-        say STDERR "Content needs update";
+        $self->logger->info("Content needs update");
 
         my $path = $self->path;
 

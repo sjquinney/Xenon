@@ -9,7 +9,7 @@ use Moo;
 use Try::Tiny;
 use namespace::clean;
 
-with 'Xenon::Role::FileManager';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
 
 sub _build_pathtype {
     return 'link';
@@ -36,7 +36,7 @@ sub build {
     my $source = $self->source;
 
     if ( !$source->exists ) {
-        warn "Source '$source' does not exist for '$target'\n";
+        $self->logger->warn("Source '$source' does not exist for '$target'");
     }
 
     try {
@@ -55,7 +55,7 @@ sub build {
         }
 
         if ($needs_update) {
-            say STDERR "symlink $source $target";
+            $self->logger->info("Creating symlink $source $target");
             symlink "$source", "$target"
                 or die "Could not symlink '$target' to '$source': $OS_ERROR\n";
         }

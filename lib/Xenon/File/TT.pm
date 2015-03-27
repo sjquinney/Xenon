@@ -7,7 +7,7 @@ use v5.10;
 use Moo;
 use namespace::clean;
 
-with 'Xenon::Role::FileContentManager';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::FileContentManager';
 
 sub _build_pathtype {
     return 'file';
