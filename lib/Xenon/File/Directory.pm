@@ -9,7 +9,7 @@ use Moo;
 use Try::Tiny;
 use namespace::clean;
 
-with 'Xenon::Role::FileManager';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
 
 # source is meaningless for directories
 has '+source' => (
@@ -37,7 +37,7 @@ sub build {
 
     try {
         if ( !$target->exists ) {
-            say STDERR "Creating directory '$target'";
+            $self->logger->info("Creating directory '$target'");
             my %options;
             if ( $self->has_owner ) {
                 $options{owner} = $self->owner;

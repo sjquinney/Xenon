@@ -9,6 +9,8 @@ Readonly my $ID_UNCHANGED => -1;
 
 use Moo::Role;
 
+with 'Xenon::Role::Log4perl';
+
 use URI::Escape ();
 use English qw(-no_match_vars);
 use Try::Tiny;
@@ -173,12 +175,14 @@ sub configure {
 sub check_parent {
     my ($self) = @_;
 
+    my $logger = $self->logger;
+
     my $parent = $self->path->parent;
-    say STDERR "Checking existence of parent directory '$parent'";
+    $logger->debug("Checking existence of parent directory '$parent'");
 
     if ( !$parent->exists ) {
         if ( $self->mkdir ) {
-            say STDERR "Attempting to create parent directory '$parent'";
+            $logger->debug("Attempting to create parent directory '$parent'");
             try {
                 $parent->mkpath;
             } catch {
@@ -206,7 +210,7 @@ sub required_mode {
         # there is one, otherwise just use the default. These might
         # need to be tightened up with the umask.
 
-        if ( $self->path->is_file ) {
+        if ( $self->path->exists ) {
             $required_mode = $self->path->stat->mode & 07777;
         } else {
             $required_mode = $self->default_mode;
@@ -247,7 +251,7 @@ sub set_access_controls {
 
         if ( $new_owner != $ID_UNCHANGED || $new_group != $ID_UNCHANGED ) {
 
-            say STDERR "chown $new_owner:$new_group $path";
+            $self->logger->debug("chown $new_owner:$new_group $path");
             chown $new_owner, $new_group, "$path"
                 or die "Could not chown $new_owner:$new_group '$path': $OS_ERROR\n";
 
@@ -258,7 +262,7 @@ sub set_access_controls {
     my $current_mode  = $stat->mode & 07777; # Remove the file type part
 
     if ( $current_mode != $required_mode ) {
-        say STDERR "chmod $required_mode $path";
+        $self->logger->debug("chmod $required_mode $path");
         $path->chmod($required_mode)
             or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
     }
