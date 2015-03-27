@@ -5,6 +5,9 @@ use warnings;
 use v5.10;
 
 use Moo;
+
+with 'Xenon::Role::Log4perl';
+
 use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
@@ -70,7 +73,8 @@ sub configure {
         $current_paths{$file->path} = $file;
 
         try {
-            say STDERR 'Configuring ' . $id;
+            $self->logger->debug('Configuring ' . $id);
+
             $file->configure();
 
             if ( $self->has_registry ) {
@@ -80,7 +84,7 @@ sub configure {
             }
 
         } catch {
-            warn "Failed to configure file '$id': $_\n"; 
+            $self->logger->error("Failed to configure file '$id': $_");
         };
 
         if ( $self->has_registry ) {
@@ -102,7 +106,7 @@ sub configure {
                                 $path->remove or die "$!\n";
                             }
                         } catch {
-                            warn "Failed to remove path '$path': $_";
+                            $self->logger->error("Failed to remove path '$path': $_");
                         } finally {
                             $self->registry->deregister_path( $self->tag, $path );
                         };
