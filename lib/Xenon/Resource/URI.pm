@@ -24,6 +24,24 @@ has '+source' => (
     coerce => XenonURI->coercion,
 );
 
+sub BUILDARGS {
+  my ( $class, @args ) = @_;
+
+  my %args;
+  if ( scalar @args == 1 ) {
+      %args = %{ $args[0] };
+  } else {
+      %args = @args;
+  }
+
+  # Convert explicit path to file URI
+  if ( $args{source} =~ m{^/} ) {
+      $args{source} = 'file://' . $args{source};
+  }
+
+  return \%args;
+};
+
 # Note that these are class methods
 
 sub cache_dir {
