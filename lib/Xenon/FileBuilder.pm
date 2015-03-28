@@ -11,6 +11,7 @@ with 'Xenon::Role::Log4perl';
 use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
+use Xenon::Constants qw(:change);
 use namespace::clean;
 
 has 'files' => (
@@ -75,7 +76,13 @@ sub configure {
         try {
             $self->logger->debug('Configuring ' . $id);
 
-            $file->configure();
+            my ($change_type) = $file->configure();
+
+            if ( $change_type == $CHANGE_CREATED ) {
+                $self->logger->info("Successfully created '$file'");
+            } elsif ( $change_type == $CHANGE_UPDATED ) {
+                $self->logger->info("Successfully updated '$file'");
+            }
 
             if ( $self->has_registry ) {
                 $self->registry->register_path(

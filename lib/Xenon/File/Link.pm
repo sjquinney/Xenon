@@ -7,6 +7,7 @@ use v5.10;
 use English qw(-no_match_vars);
 use Moo;
 use Try::Tiny;
+use Xenon::Constants qw(:change);
 use namespace::clean;
 
 with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
@@ -32,39 +33,44 @@ sub set_access_controls {
 sub build {
     my ($self) = @_;
 
-    my $target = $self->path;
-    my $source = $self->source;
+    my $linkname = $self->path;
+    my $target   = $self->source;
 
-    if ( !$source->exists ) {
-        $self->logger->warn("Source '$source' does not exist for '$target'");
+    if ( !$target->exists ) {
+        $self->logger->warn("Target '$target' does not exist for '$linkname'");
     }
 
+    my $change_type = $CHANGE_NONE;
     try {
 
         my $needs_update = 1;
-        if ( $target->exists ) {
-            my $current = readlink "$target"
-                or die "Could not read symlink '$target': $OS_ERROR\n";
+        if ( $linkname->exists ) {
+            my $current = readlink "$linkname"
+                or die "Could not read symlink '$linkname': $OS_ERROR\n";
 
-            if ( $current eq "$source" ) {
+            if ( $current eq "$target" ) {
                 $needs_update = 0;
             } else {
+                $change_type = $CHANGE_UPDATED;
+                $self->logger->info("Deleting symlink '$linkname' to '$target'");
                 $target->remove
-                    or die "Could not remove old link '$target': $OS_ERROR\n";
+                    or die "Could not remove old link '$linkname': $OS_ERROR\n";
             }
+        } else {
+            $change_type = $CHANGE_CREATED;
         }
 
         if ($needs_update) {
-            $self->logger->info("Creating symlink $source $target");
-            symlink "$source", "$target"
-                or die "Could not symlink '$target' to '$source': $OS_ERROR\n";
+            $self->logger->info("Creating symlink '$linkname' to '$target'");
+            symlink "$target", "$linkname"
+                or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
         }
 
     } catch {
         die "Failed to configure symlink: $_";
     };
 
-    return;
+    return $change_type;
 }
 
 1;

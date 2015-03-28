@@ -4,16 +4,12 @@ use warnings;
 
 use v5.10;
 
-use Readonly;
-Readonly my $NOCHANGE      = 0;
-Readonly my $CHANGE_NEW    = 1;
-Readonly my $CHANGE_UPDATE = 2;
-
 use Digest ();
 use English qw(-no_match_vars);
 use File::Temp ();
 use Types::Standard qw(HashRef Str);
 use Xenon::Types qw(XenonResource XenonBackupStyle XenonContentDecoderList);
+use Xenon::Constants qw(:change);
 use Try::Tiny;
 
 use Moo::Role;
@@ -97,25 +93,25 @@ sub path_type_is_correct {
     return ( $self->path->is_file && !-l $self->path ) ? 1 : 0;
 }
 
-sub content_needs_update {
+sub content_change_type {
     my ( $self, $new_digest ) = @_;
 
     my $path = $self->path;
 
-    my $needs_update = $CHANGE_NEW;
+    my $change_type = $CHANGE_CREATED;
     if ( $path->exists ) {
 
         my $cur_digest = $path->digest($self->digest_algorithm);
 
         if ( $new_digest eq $cur_digest ) {
-            $needs_update = $NOCHANGE;
+            $change_type = $CHANGE_NONE;
         } else {
-            $needs_update = $CHANGE_UPDATE;
+            $change_type = $CHANGE_UPDATED;
         }
 
     }
 
-    return $needs_update;
+    return $change_type;
 }
 
 sub digest_data {
@@ -140,8 +136,8 @@ sub build {
     my $data   = $self->build_data($input);
     my $digest = $self->digest_data($data);
 
-    my $needs_update = $self->content_needs_update($digest);
-    if ( $needs_update != $NOCHANGE ) {
+    my $change_type = $self->content_change_type($digest);
+    if ( $change_type != $CHANGE_NONE ) {
         $self->logger->info("Content needs update");
 
         my $path = $self->path;
@@ -179,7 +175,7 @@ sub build {
 
     }
 
-    return ( $needs_update, $digest );
+    return ( $change_type, $digest );
 }
 
 sub make_backup {

@@ -167,9 +167,7 @@ sub configure {
 
     $self->prebuild;
 
-    $self->build;
-
-    return;
+    return $self->build;
 }
 
 sub check_parent {
