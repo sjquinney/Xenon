@@ -63,7 +63,7 @@ declare XenonContentDecoderList,
 
 coerce XenonContentDecoderList,
     from ArrayRef, via { [ map { to_XenonContentDecoder($_) } @{$_} ] },
-    from Str, via { [ map { to_XenonContentDecoder($_) } split /[\s|,]+/, $_ ] };
+    from Str, via { [ map { to_XenonContentDecoder($_) } split /\s*\|\s*/, $_ ] };
 
 role_type XenonFileManager, { role => 'Xenon::Role::FileManager' };
 
