@@ -23,7 +23,7 @@ sub default_mode {
 sub path_type_is_correct {
     my $self = shift @_;
 
-    return ( $self->path->is_file && -l $self->path ) ? 1 : 0;
+    return ( -l $self->path->stringify ) ? 1 : 0;
 }
 
 sub set_access_controls {
@@ -51,9 +51,10 @@ sub build {
             if ( $current eq "$target" ) {
                 $needs_update = 0;
             } else {
+                $self->logger->info("Update required for symlink '$linkname'");
                 $change_type = $CHANGE_UPDATED;
-                $self->logger->info("Deleting symlink '$linkname' to '$target'");
-                $target->remove
+                $self->logger->info("Deleting symlink '$linkname' to '$current'");
+                $linkname->remove
                     or die "Could not remove old link '$linkname': $OS_ERROR\n";
             }
         } else {
