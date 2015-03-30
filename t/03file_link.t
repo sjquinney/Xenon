@@ -17,22 +17,37 @@ BEGIN { use_ok('Xenon::File::Link'); }
 my $tmpdir = File::Temp->newdir( 'xenonXXXXXX',
                                   TMPDIR   => 1,
                                   CLEANUP  => 0 );
-my $linkname = mktemp 'xenonXXXXXX';
 
-my $linkfile = File::Spec->catfile( $tmpdir, $linkname );
+my $link1 = mktemp 'xenonXXXXXX';
+$link1 = File::Spec->catfile( $tmpdir, $link1 );
 
 my $file1 = Xenon::File::Link->new( source => '/tmp',
-                                   path   => $linkfile );
+                                   path   => $link1 );
 $file1->configure();
 
-symlink_target_exists_ok( $linkfile, '/tmp' );
+symlink_target_exists_ok( $link1, '/tmp' );
 
 # Same path as file1, different source, should cause update
  
 my $file2 = Xenon::File::Link->new( source => '/var',
-                                    path   => $linkfile );
+                                    path   => $link1 );
 $file2->configure();
 
-symlink_target_exists_ok( $linkfile, '/var' );
+symlink_target_exists_ok( $link1, '/var' );
+
+# Dangling symlink
+
+my $dangle = mktemp 'xenonXXXXXX';
+$dangle = File::Spec->catfile( $tmpdir, $dangle );
+
+my $link3 = mktemp 'xenonXXXXXX';
+$link3 = File::Spec->catfile( $tmpdir, $link3 );
+
+my $file3 = Xenon::File::Link->new( source => $dangle,
+                                    path   => $link3 );
+$file3->configure();
+
+symlink_target_dangles_ok( $link3 );
+symlink_target_is( $link3, $dangle );
 
 done_testing;
