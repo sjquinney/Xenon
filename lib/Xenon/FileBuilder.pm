@@ -63,6 +63,8 @@ sub configure {
 
     my @files = @{ $self->files };
 
+    my @changed_files;
+
     my %current_paths;
     for my $file (@files) {
         my $id = $file->id;
@@ -77,11 +79,8 @@ sub configure {
             $self->logger->debug('Configuring ' . $id);
 
             my ($change_type) = $file->configure();
-
-            if ( $change_type == $CHANGE_CREATED ) {
-                $self->logger->info("Successfully created '$file'");
-            } elsif ( $change_type == $CHANGE_UPDATED ) {
-                $self->logger->info("Successfully updated '$file'");
+            if ( $change_type != $CHANGE_NONE ) {
+                push @changed_files, $file->path;
             }
 
             if ( $self->has_registry ) {
@@ -126,7 +125,7 @@ sub configure {
 
     }
 
-    return;
+    return @changed_files;
 
 }
 

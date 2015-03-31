@@ -16,6 +16,7 @@ use English qw(-no_match_vars);
 use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
 use Types::Standard qw(Bool Str);
+use Xenon::Constants qw(:change);
 use Xenon::Types qw(UID GID UnixMode);
 
 requires 'path_type_is_correct', 'build', 'default_mode';
@@ -167,7 +168,16 @@ sub configure {
 
     $self->prebuild;
 
-    return $self->build;
+    my ($change_type) = $self->build;
+
+    my $file = $self->path;
+    if ( $change_type == $CHANGE_CREATED ) {
+        $self->logger->info("Successfully created '$file'");
+    } elsif ( $change_type == $CHANGE_UPDATED ) {
+        $self->logger->info("Successfully updated '$file'");
+    }
+
+    return $change_type;
 }
 
 sub check_parent {
