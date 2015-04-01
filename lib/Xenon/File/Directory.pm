@@ -15,6 +15,7 @@ with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
 # source is meaningless for directories
 has '+source' => (
     required => 0,
+    init_arg => undef,
 );
 
 sub _build_pathtype {
