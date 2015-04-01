@@ -1,4 +1,4 @@
-package Xenon::Registry::DBD; # -*- perl -*-
+package Xenon::Registry::DBI; # -*- perl -*-
 use strict;
 use warnings;
 
