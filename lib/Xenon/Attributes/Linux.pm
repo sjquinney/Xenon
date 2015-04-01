@@ -1,4 +1,4 @@
-package Xenon::AttributeManager::LinuxACL; # -*- perl -*-
+package Xenon::Attributes::Linux; # -*- perl -*-
 use strict;
 use warnings;
 
