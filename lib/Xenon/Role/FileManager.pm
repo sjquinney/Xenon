@@ -285,7 +285,7 @@ sub set_access_controls {
             or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
     }
 
-    for my $attr_mgr ($self->attributes) {
+    for my $attr_mgr (@{ $self->attributes }) {
         $attr_mgr->configure($path);
     }
 
