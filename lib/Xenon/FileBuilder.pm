@@ -9,6 +9,7 @@ use Moo;
 with 'Xenon::Role::Log4perl';
 
 use Try::Tiny;
+use Types::Standard qw(Str);
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use Xenon::Constants qw(:change);
