@@ -4,6 +4,8 @@ use warnings;
 
 use v5.10;
 
+use JSON ();
+
 use Moo;
 use Types::Standard qw(ArrayRef HashRef Str);
 use Xenon::Types qw(UID GID);
@@ -173,6 +175,10 @@ sub merge_with_current {
         $merged->{$class} //= $current->{$class};
     }
 
+    for my $class (qw/user group/) {
+        $merged->{$class} //= {};
+    }
+
     # We also need to ensure we have a sensible mask otherwise it will
     # end up being set as '---' which is applied to any user and group
     # settings and makes them useless.
@@ -180,6 +186,19 @@ sub merge_with_current {
     $merged->{mask} //= automask($merged);
 
     return $merged;
+}
+
+sub hashes_differ {
+    my ( $hash_a, $hash_b ) = @_;
+
+    # Canonical ensures the hashes are sorted on keys
+
+    my $json_a = JSON->new->canonical(1)->encode($hash_a);
+    my $json_b = JSON->new->canonical(1)->encode($hash_b);
+
+    my $differ = $json_a eq $json_b ? 0 : 1;
+
+    return $differ;
 }
 
 sub configure {
@@ -193,36 +212,37 @@ sub configure {
 
     # Only directories have 'default' ACLs
 
-    if ( -d $path ) {
-        my ( $current_acls, $current_default_acls ) = 
-            Linux::ACL::getfacl($path);
+    my ( $current_acls, $current_default_acls ) = Linux::ACL::getfacl($path);
 
-        my $merged_acls = merge_with_current( $self->acls, $current_acls );
+    my $merged_acls = merge_with_current( $self->acls, $current_acls );
+    my @setfacl_args = ( $merged_acls );
+
+    my $needs_update = hashes_differ( $current_acls, $merged_acls );
+
+    if ( -d $path ) {
 
         # Only apply 'default' ACLs when they are specified
 
         if ( scalar keys %{$self->default_acls} > 0 ) {
             my $merged_default_acls =
                 merge_with_current( $self->default_acls, $current_default_acls );
-            Linux::ACL::setfacl( $path, $merged_acls, $merged_default_acls )
-                or die "Failed to setfacl on directory '$path'\n";
+            push @setfacl_args, $merged_default_acls;
 
-        } else {
-            Linux::ACL::setfacl( $path, $merged_acls )
-                or die "Failed to setfacl on directory '$path'\n";
+            $needs_update ||= hashes_differ( $current_default_acls,
+                                             $merged_default_acls );
+
         }
 
-
-    } else {
-        my ($current_acls) = Linux::ACL::getfacl($path);
-
-        my $merged_acls = merge_with_current( $self->acls, $current_acls );
-
-        Linux::ACL::setfacl( $path, $merged_acls )
-            or die "Failed to setfacl on file '$path'\n";
     }
 
-    $self->logger->info("Successfully set Linux ACLs on '$path'");
+    if ($needs_update) {
+        $self->logger->info("Need to update Linux ACLs for '$path'");
+
+        Linux::ACL::setfacl( $path, @setfacl_args )
+            or die "Failed to set Linux ACLs on '$path'\n";
+
+        $self->logger->info("Successfully set Linux ACLs on '$path'");
+    }
 
     return
 }
