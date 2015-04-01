@@ -10,6 +10,7 @@ use Type::Library
                    XenonResource XenonBackupStyle XenonURI
                    XenonFileManager XenonFileManagerList
                    XenonRegistry
+                   XenonAttributeManager XenonAttributeManagerList
                    XenonContentDecoder XenonContentDecoderList);
 
 use Type::Utils -all;
@@ -41,6 +42,36 @@ coerce XenonResource,
         }
 };
 
+role_type XenonAttributeManager, { role => 'Xenon::Role::AttributeManager' };
+
+coerce XenonAttributeManager,
+    from Str, via {
+        my ( $modname, $modargs ) = split /\s*:\s*/, $_, 2;
+        my $mod =
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Attributes' );
+        if ( defined $modargs ) {
+            $mod->new_from_json(\$modargs);
+        } else {
+            $mod->new();
+        }
+    },
+    from ArrayRef, via {
+        my ( $modname, @modargs ) = @{$_};
+        my $mod =
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Attributes' );
+        $mod->new(@modargs);
+};
+
+declare XenonAttributeManagerList,
+    as ArrayRef[XenonAttributeManager],
+    where { ArrayRef->check($_) &&
+                !grep { !is_XenonAttributeManager($_) } @{$_} },
+    message { 'Invalid list of attribute managers' };
+
+coerce XenonAttributeManagerList,
+    from ArrayRef, via { [ map { to_XenonAttributeManager($_) } @{$_} ] },
+    from Str, via { [ map { to_XenonAttributeManager($_) } split /\s*\|\s*/, $_ ] };
+
 role_type XenonContentDecoder, { role => 'Xenon::Role::ContentDecoder' };
 
 coerce XenonContentDecoder,
@@ -53,6 +84,12 @@ coerce XenonContentDecoder,
         } else {
             $mod->new();
         }
+    },
+    from ArrayRef, via {
+        my ( $modname, @modargs ) = @{$_};
+        my $mod =
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::ContentDecoder' );
+        $mod->new(@modargs);
 };
 
 declare XenonContentDecoderList,

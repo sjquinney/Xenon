@@ -17,7 +17,7 @@ use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
 use Types::Standard qw(Bool Str);
 use Xenon::Constants qw(:change);
-use Xenon::Types qw(UID GID UnixMode);
+use Xenon::Types qw(UID GID UnixMode XenonAttributeManagerList);
 
 requires 'path_type_is_correct', 'build', 'default_mode';
 
@@ -69,6 +69,16 @@ has 'mode' => (
     isa       => UnixMode,
     predicate => 'has_mode',
 );
+
+has 'attributes' => (
+    is      => 'ro',
+    isa     => XenonAttributeManagerList,
+    coerce  => XenonAttributeManagerList->coercion,
+    builder => '_build_attributes',
+    lazy    => 1,
+);
+
+sub _build_attributes { [] }
 
 has 'mkdir' => (
     is      => 'ro',
@@ -273,6 +283,10 @@ sub set_access_controls {
         $self->logger->debug("chmod $required_mode $path");
         $path->chmod($required_mode)
             or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
+    }
+
+    for my $attr_mgr ($self->attributes) {
+        $attr_mgr->configure($path);
     }
 
     return;

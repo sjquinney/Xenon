@@ -60,21 +60,25 @@ sub parse_acls {
             $class_perms = split_perms($class_perms);
 
             if ( $class =~ m/^u(ser)?$/i ) {
-                if ( !defined $class_name || length $class_name == 0 ) {
+                if ( !defined $class_name || $class_name !~ m/\S/ ) {
                     $store->{uperm} = $class_perms;
                 } else {
                     if ( !UID->check($class_name) ) {
                         $class_name = UID->coerce($class_name);
+                        UID->check($class_name) or
+                            die "Invalid user '$class_name'\n";
                     }
 
                     $store->{user}{$class_name} = $class_perms;
                 }
             } elsif ( $class =~ m/^g(roup)?$/i ) {
-                if ( !defined $class_name || length $class_name == 0 ) {
+                if ( !defined $class_name || $class_name !~ m/\S/ ) {
                     $store->{gperm} = $class_perms;
                 } else {
                     if ( !GID->check($class_name) ) {
                         $class_name = GID->coerce($class_name);
+                        GID->check($class_name) or
+                            die "Invalid group '$class_name'\n";
                     }
 
                     $store->{group}{$class_name} = $class_perms;
@@ -193,8 +197,7 @@ sub configure {
         my ( $current_acls, $current_default_acls ) = 
             Linux::ACL::getfacl($path);
 
-        my $merged_acls =
-            merge_with_current( $self->acls, $current_acls );
+        my $merged_acls = merge_with_current( $self->acls, $current_acls );
 
         # Only apply 'default' ACLs when they are specified
 
@@ -202,24 +205,24 @@ sub configure {
             my $merged_default_acls =
                 merge_with_current( $self->default_acls, $current_default_acls );
             Linux::ACL::setfacl( $path, $merged_acls, $merged_default_acls )
-                or die "Failed to setfacl on '$path'\n";
+                or die "Failed to setfacl on directory '$path'\n";
 
         } else {
             Linux::ACL::setfacl( $path, $merged_acls )
-                or die "Failed to setfacl on '$path'\n";
+                or die "Failed to setfacl on directory '$path'\n";
         }
 
 
     } else {
-        my ($current_acls) = 
-            Linux::ACL::getfacl($path);
+        my ($current_acls) = Linux::ACL::getfacl($path);
 
-        my $merged_acls =
-            merge_with_current( $self->acls, $current_acls );
+        my $merged_acls = merge_with_current( $self->acls, $current_acls );
 
         Linux::ACL::setfacl( $path, $merged_acls )
-            or die "Failed to setfacl on '$path'\n";
+            or die "Failed to setfacl on file '$path'\n";
     }
+
+    $self->logger->info("Successfully set Linux ACLs on '$path'");
 
     return
 }
