@@ -139,7 +139,7 @@ sub fetch {
 
         if ( $cache_file->is_file ) {
             my $mtime = $cache_file->stat->mtime // 0;
-            say "cache file '$cache_file' exists with mtime '$mtime'";
+            $self->logger->debug("Found cache file '$cache_file' with mtime '$mtime'");
             if ($mtime) {
                 $req->if_modified_since($mtime);
             }
@@ -152,7 +152,7 @@ sub fetch {
             # cache the content of the response
             $cache_file->spew($res->decoded_content);
         } elsif ( $code == HTTP_NOT_MODIFIED ) {
-            say "Using cached version of '$source'\n";
+            $self->logger->debug("Using cached version of '$source'");
         } else {
             if ( $cache_file->is_file ) {
                 warn "Failed to fetch $source: " . $res->status_line . ", using cached data\n";

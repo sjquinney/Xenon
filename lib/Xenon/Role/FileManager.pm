@@ -222,22 +222,26 @@ sub required_mode {
     my $required_mode;
     if ( $self->has_mode ) {
         $required_mode = $self->mode;
+        $self->logger->debug(sprintf 'Using specific mode 0%o', $required_mode );
     } else {
 
         # If nothing is specified then we use the current mode if
-        # there is one, otherwise just use the default. These might
-        # need to be tightened up with the umask.
+        # there is one, otherwise just use the default.
 
         if ( $self->path->exists ) {
             $required_mode = $self->path->stat->mode & 07777;
+            $self->logger->debug(sprintf 'Using current mode 0%o', $required_mode );
         } else {
             $required_mode = $self->default_mode;
+
+            # Honour the umask which might tighten the mode settings
+
+            my $umask = umask;
+            $required_mode &= ~$umask;
+
+            $self->logger->debug(sprintf 'Using default mode 0%o', $required_mode );
         }
 
-        # Honour the umask which might tighten the mode settings
-
-        my $umask = umask;
-        $required_mode &= ~$umask;
     }
 
     return $required_mode;
@@ -280,7 +284,7 @@ sub set_access_controls {
     my $current_mode  = $stat->mode & 07777; # Remove the file type part
 
     if ( $current_mode != $required_mode ) {
-        $self->logger->debug("chmod $required_mode $path");
+        $self->logger->debug(sprintf 'Current mode: 0%o, required mode: 0%o', $current_mode, $required_mode );
         $path->chmod($required_mode)
             or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
     }
