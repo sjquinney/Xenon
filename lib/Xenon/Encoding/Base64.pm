@@ -1,4 +1,4 @@
-package Xenon::ContentDecoder::Base64; # -*- perl -*-
+package Xenon::Encoding::Base64; # -*- perl -*-
 use strict;
 use warnings;
 
