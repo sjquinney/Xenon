@@ -8,9 +8,10 @@ use English qw(-no_match_vars);
 use Moo;
 use Try::Tiny;
 use Xenon::Constants qw(:change);
-use namespace::clean;
 
-with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
+with 'Xenon::Role::FileManager';
+
+use namespace::clean;
 
 sub _build_pathtype {
     return 'link';

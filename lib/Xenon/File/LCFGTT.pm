@@ -5,9 +5,10 @@ use warnings;
 use v5.10;
 
 use Moo;
-use namespace::clean;
 
 extends 'Xenon::File::TT';
+
+use namespace::clean;
 
 around '_default_options' => sub {
     my ( $orig, @args ) = @_;

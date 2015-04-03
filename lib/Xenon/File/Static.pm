@@ -5,9 +5,10 @@ use warnings;
 use v5.10;
 
 use Moo;
-use namespace::clean;
 
 with 'Xenon::Role::FileContentManager';
+
+use namespace::clean;
 
 sub _build_pathtype {
     return 'file';
