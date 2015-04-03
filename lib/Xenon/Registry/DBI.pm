@@ -5,6 +5,7 @@ use warnings;
 use v5.10;
 
 use DBI qw(:sql_types);
+use List::MoreUtils ();
 use SQL::Abstract ();
 
 use Readonly;
@@ -105,13 +106,16 @@ sub path_is_registered {
 
 
 sub paths_for_tag {
-    my ( $self, $tag ) = @_;
+    my ( $self, $tag, $supercedes ) = @_;
+
+    $supercedes //= [];
+    my @tags = ( $tag, @{ $supercedes } );
 
     my $dbh = $self->connection;
     my $sqla = SQL::Abstract->new();
 
     my ( $stmt, @bind ) = $sqla->select( $REGISTRY_TABLE, ['pathname'],
-                                         { tag => $tag } );
+                                         { tag => \@tags } );
 
     my $sth = $dbh->prepare_cached($stmt);
     $sth->execute(@bind);
@@ -143,7 +147,10 @@ sub get_data_for_path {
 }
 
 sub deregister_path {
-    my ( $self, $tag, $path ) = @_;
+    my ( $self, $tag, $supercedes, $path ) = @_;
+
+    $supercedes //= [];
+    my @tags = ( $tag, @{ $supercedes } );
 
     # Using Path::Tiny to ensure path is handled consistently
     if ( !AbsPath->check($path) ) {
@@ -155,15 +162,15 @@ sub deregister_path {
     if ($is_registered) {
 
         my $cur_tag = $entry->{tag};
-        if ( $cur_tag ne $tag ) {
-            die "Cannot deregister path '$path' with tag '$tag', it is owned by '$cur_tag'\n";
+        if ( List::MoreUtils::none { $_ eq $cur_tag } @tags ) {
+            die "Cannot deregister path '$path', it is owned by '$cur_tag'\n";
         }
 
         my $dbh = $self->connection;
         my $sqla = SQL::Abstract->new();
         my ( $stmt, @bind ) = $sqla->delete( '$REGISTRY_TABLE',
                                              { pathname => "$path",
-                                               tag      => $tag } );
+                                               tag      => \@tags } );
 
         try {
             my $sth = $dbh->prepare_cached($stmt);
@@ -182,7 +189,10 @@ sub deregister_path {
 }
 
 sub register_path {
-    my ( $self, $tag, $path, $permanent, $meta_ref ) = @_;
+    my ( $self, $tag, $supercedes, $path, $permanent, $meta_ref ) = @_;
+
+    $supercedes //= [];
+    my @tags = ( $tag, @{ $supercedes } );
 
     # Using Path::Tiny to ensure path is handled consistently
     if ( !AbsPath->check($path) ) {
@@ -205,13 +215,13 @@ sub register_path {
     if ($is_registered) { # update
 
         my $cur_tag = $entry->{tag};
-        if ( $cur_tag ne $tag ) {
-            die "Cannot register path '$path' with tag '$tag', it is owned by '$cur_tag'\n";
+        if ( List::MoreUtils::none { $_ eq $cur_tag } @tags ) {
+            die "Cannot register path, it is owned by '$cur_tag'\n";
         }
 
         ( $stmt, @bind ) = $sqla->update( $REGISTRY_TABLE, \%data,
                                           { pathname => "$path",
-                                            tag      => $tag } );
+                                            tag      => \@tags } );
     } else { # insert
         ( $stmt, @bind ) = $sqla->insert( $REGISTRY_TABLE, \%data );
     }

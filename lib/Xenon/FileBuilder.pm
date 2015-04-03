@@ -10,7 +10,7 @@ with 'Xenon::Role::Log4perl';
 
 use File::Spec ();
 use Try::Tiny;
-use Types::Standard qw(Str);
+use Types::Standard qw(ArrayRef Str);
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use Xenon::Constants qw(:change);
@@ -34,6 +34,12 @@ has 'tag'      => (
     is        => 'ro',
     isa       => Str,
     predicate => 'has_tag',
+);
+
+has 'supercedes' => (
+    is        => 'ro',
+    isa       => ArrayRef,
+    default   => sub { [] },
 );
 
 sub _build_files {
@@ -134,7 +140,8 @@ sub configure {
 
             if ( $self->has_registry ) {
                 $self->registry->register_path(
-                    $self->tag, $file->path, $file->permanent,
+                    $self->tag, $self->supercedes,
+                    $file->path, $file->permanent,
                 );
             }
 
@@ -147,7 +154,8 @@ sub configure {
     # directories being empty before any attempt is made to remove.
 
     if ( $self->has_registry ) {
-        my @registered_paths = $self->registry->paths_for_tag($self->tag);
+        my @registered_paths =
+            $self->registry->paths_for_tag( $self->tag, $self->supercedes );
 
         for my $path ( $self->sort_files_leaves_first(@registered_paths) ) {
             if ( !$current_paths{$path->path} ) {
@@ -167,7 +175,9 @@ sub configure {
                     } catch {
                         $self->logger->error("Failed to remove path '$path': $_");
                     } finally {
-                        $self->registry->deregister_path( $self->tag, $path );
+                        $self->registry->deregister_path(
+                            $self->tag, $self->supercedes, $path
+                        );
                     };
                 }
 
