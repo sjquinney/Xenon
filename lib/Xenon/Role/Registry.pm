@@ -7,7 +7,10 @@ use v5.10;
 use Moo::Role;
 use Types::Path::Tiny qw(AbsPath);
 
-requires 'register_path', 'deregister_path', 'path_is_registered', 'paths_for_tag';
+with 'Xenon::Role::Log4perl';
+
+requires 'can_register_path', 'deregister_path', 'can_register_path',
+    'path_is_registered', 'paths_for_tag', 'register_path';
 
 sub path_metadata {
     my ( $self, $path, $meta_ref ) = @_;
