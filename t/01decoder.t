@@ -6,11 +6,11 @@ use v5.10;
 
 use Test::More tests => 4;
 
-BEGIN { use_ok( 'Xenon::ContentDecoder::Base64' ); }
+BEGIN { use_ok( 'Xenon::Encoding::Base64' ); }
 
-my $decoder = Xenon::ContentDecoder::Base64->new();
+my $decoder = Xenon::Encoding::Base64->new();
 
-isa_ok( $decoder, 'Xenon::ContentDecoder::Base64' );
+isa_ok( $decoder, 'Xenon::Encoding::Base64' );
 
 can_ok( $decoder, 'decode' );
 
