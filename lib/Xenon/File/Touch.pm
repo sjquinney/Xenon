@@ -5,6 +5,7 @@ use warnings;
 use v5.10;
 
 use Moo;
+use Xenon::Constants qw(:change);
 
 with 'Xenon::Role::FileManager';
 
