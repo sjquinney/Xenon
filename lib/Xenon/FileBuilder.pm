@@ -141,35 +141,37 @@ sub configure {
         } catch {
             $self->logger->error("Failed to configure file '$id': $_");
         };
+    }
 
-        if ( $self->has_registry ) {
-            my @registered_paths = $self->registry->paths_for_tag($self->tag);
+    # Delete files by leaves-first approach so there is some chance of
+    # directories being empty before any attempt is made to remove.
 
-            for my $path (@registered_paths) {
-                if ( !$current_paths{$path->path} ) {
-                    my $entry = $self->registry->get_entry_for_path($path);
+    if ( $self->has_registry ) {
+        my @registered_paths = $self->registry->paths_for_tag($self->tag);
 
-                    if ( !$entry->{permanent} ) {
-                        try {
-                            if ( $path->is_dir ) {
-                                if ( scalar $path->children > 0 ) {
-                                    die "non-empty directory\n";
-                                } else {
-                                    rmdir $path or die "$!\n";
-                                }
+        for my $path ( $self->sort_files_leaves_first(@registered_paths) ) {
+            if ( !$current_paths{$path->path} ) {
+                my $entry = $self->registry->get_entry_for_path($path);
+
+                if ( !$entry->{permanent} ) {
+                    try {
+                        if ( $path->is_dir ) {
+                            if ( scalar $path->children > 0 ) {
+                                die "non-empty directory\n";
                             } else {
-                                $path->remove or die "$!\n";
+                                rmdir $path or die "$!\n";
                             }
-                        } catch {
-                            $self->logger->error("Failed to remove path '$path': $_");
-                        } finally {
-                            $self->registry->deregister_path( $self->tag, $path );
-                        };
-                    }
-
+                        } else {
+                            $path->remove or die "$!\n";
+                        }
+                    } catch {
+                        $self->logger->error("Failed to remove path '$path': $_");
+                    } finally {
+                        $self->registry->deregister_path( $self->tag, $path );
+                    };
                 }
-            }
 
+            }
         }
 
     }
