@@ -91,7 +91,7 @@ sub sort_files {
         }
         sort $sort_sub
         map {
-            my $path = Scalar::Util::blessed($_) && $_->does('Xenon::Role::FileManager') ? $_->path : $_;
+            my $path = Scalar::Util::blessed($_) && $_->can('path') ? $_->path : $_;
             my ( $vol, $dirs, $basename ) = File::Spec->splitpath("$path");
             my @dirs = File::Spec->splitdir($dirs);
             my $depth = scalar @dirs;
@@ -181,23 +181,27 @@ sub configure {
                 my $entry = $self->registry->get_data_for_path($path);
 
                 if ( !$entry->{permanent} ) {
-                    try {
-                        if ( $path->is_dir ) {
-                            if ( scalar $path->children > 0 ) {
+
+                    if ( $path->exists ) {
+                        $self->logger->info("Removing path '$path' which is now unmanaged");
+                        try {
+                            if ( $path->is_dir ) {
+                                if ( scalar $path->children > 0 ) {
                                 die "non-empty directory\n";
+                                } else {
+                                    rmdir $path or die "$!\n";
+                                }
                             } else {
-                                rmdir $path or die "$!\n";
+                                $path->remove or die "$!\n";
                             }
-                        } else {
-                            $path->remove or die "$!\n";
-                        }
-                    } catch {
-                        $self->logger->error("Failed to remove path '$path': $_");
-                    } finally {
-                        $self->registry->deregister_path(
-                            $self->tag, $self->supercedes, $path
-                        );
-                    };
+                        } catch {
+                            $self->logger->error("Failed to remove path '$path': $_");
+                        } 
+                    }
+
+                    $self->registry->deregister_path(
+                        $self->tag, $self->supercedes, $path
+                    );
                 }
 
             }
