@@ -59,6 +59,10 @@ sub _build_options {
     return {};
 }
 
+sub _build_pathtype {
+    return 'file';
+}
+
 sub default_options {
     my ( $class_or_self, %new_config ) = @_;
 

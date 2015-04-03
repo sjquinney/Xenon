@@ -10,10 +10,6 @@ with 'Xenon::Role::FileContentManager';
 
 use namespace::clean;
 
-sub _build_pathtype {
-    return 'file';
-}
-
 sub _default_options {
     return {};
 }
