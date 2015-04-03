@@ -122,31 +122,47 @@ sub configure {
 
     my %current_paths;
     for my $file ( $self->sort_files_root_first() ) {
-        my $id = $file->id;
+        my $path = $file->path;
+
+        if ( $self->has_registry ) {
+
+            # Check that the path is not owned by any other tag
+
+            my ( $can_register, $entry ) =
+                $self->registry->can_register_path(
+                    $self->tag, $self->supercedes, $path );
+
+            if ( !$can_register ) {
+                my $cur_tag = $entry->{tag};
+                $self->logger->error("Cannot configure path '$path', it is owned by '$cur_tag'");
+                next;
+            }
+
+        }
 
         # Whether we succeed or fail to configure the file we want to
         # push the path onto the list so that it doesn't get removed
         # or deregistered.
 
-        $current_paths{$file->path} = $file;
+        $current_paths{$path} = $file;
 
         try {
-            $self->logger->debug('Configuring ' . $id);
+            $self->logger->debug("Configuring path '$path'");
 
             my ($change_type) = $file->configure();
             if ( $change_type != $CHANGE_NONE ) {
-                push @changed_files, $file->path;
+                push @changed_files, $path;
             }
 
             if ( $self->has_registry ) {
                 $self->registry->register_path(
                     $self->tag, $self->supercedes,
-                    $file->path, $file->permanent,
+                    $path, $file->permanent,
                 );
             }
 
         } catch {
-            $self->logger->error("Failed to configure file '$id': $_");
+            $self->logger->error("Failed to configure path '$path': $_");
         };
     }
 

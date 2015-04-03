@@ -80,6 +80,27 @@ EOT
     return $dbh;
 }
 
+sub can_register_path {
+    my ( $self, $tag, $supercedes, $path ) = @_;
+
+    $supercedes //= [];
+    my @tags = ( $tag, @{ $supercedes } );
+
+    my $can_register = 1;
+
+    my ( $is_registered, $entry ) = $self->path_is_registered($path);
+    if ($is_registered) {
+
+        my $cur_tag = $entry->{tag};
+        if ( List::MoreUtils::none { $_ eq $cur_tag } @tags ) {
+            $can_register = 0;
+        }
+
+    }
+
+    return ( $can_register, $entry );
+}
+
 sub path_is_registered {
     my ( $self, $path ) = @_;
 
