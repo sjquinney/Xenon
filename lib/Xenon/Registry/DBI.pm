@@ -189,7 +189,7 @@ sub deregister_path {
 
         my $dbh = $self->connection;
         my $sqla = SQL::Abstract->new();
-        my ( $stmt, @bind ) = $sqla->delete( '$REGISTRY_TABLE',
+        my ( $stmt, @bind ) = $sqla->delete( $REGISTRY_TABLE,
                                              { pathname => "$path",
                                                tag      => \@tags } );
 
