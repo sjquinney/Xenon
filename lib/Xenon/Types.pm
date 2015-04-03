@@ -78,7 +78,7 @@ coerce XenonContentDecoder,
     from Str, via {
         my ( $modname, $modargs ) = split /\s*:\s*/, $_, 2;
         my $mod =
-            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::ContentDecoder' );
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Encoding' );
         if ( defined $modargs ) {
             $mod->new_from_json(\$modargs);
         } else {
@@ -88,7 +88,7 @@ coerce XenonContentDecoder,
     from ArrayRef, via {
         my ( $modname, @modargs ) = @{$_};
         my $mod =
-            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::ContentDecoder' );
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Encoding' );
         $mod->new(@modargs);
 };
 
