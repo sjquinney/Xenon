@@ -174,11 +174,11 @@ sub prebuild {
 }
 
 sub configure {
-    my $self = shift @_;
+    my ( $self, @build_args ) = @_;
 
     $self->prebuild;
 
-    my ($change_type) = $self->build;
+    my ($change_type) = $self->build(@build_args);
 
     my $file = $self->path;
     if ( $change_type == $CHANGE_CREATED ) {

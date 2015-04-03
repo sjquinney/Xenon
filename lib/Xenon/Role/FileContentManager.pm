@@ -129,7 +129,7 @@ sub digest_data {
 }
 
 sub build {
-    my ($self) = @_;
+    my ( $self, @build_args ) = @_;
 
     my $input = $self->source->fetch();
 
@@ -137,7 +137,7 @@ sub build {
         $input = $enc_type->decode($input);
     }
 
-    my $data   = $self->build_data($input);
+    my $data   = $self->build_data( $input, @build_args );
     my $digest = $self->digest_data($data);
 
     my $change_type = $self->content_change_type($digest);
