@@ -9,6 +9,7 @@ use Moo;
 with 'Xenon::Role::Log4perl';
 
 use File::Spec ();
+use Scalar::Util ();
 use Try::Tiny;
 use Types::Standard qw(ArrayRef Str);
 use Types::Path::Tiny qw(AbsPath);
@@ -90,7 +91,7 @@ sub sort_files {
         }
         sort $sort_sub
         map {
-            my $path = $_->can('path') ? $_->path : $_;
+            my $path = Scalar::Util::blessed($_) && $_->does('Xenon::Role::FileManager') ? $_->path : $_;
             my ( $vol, $dirs, $basename ) = File::Spec->splitpath("$path");
             my @dirs = File::Spec->splitdir($dirs);
             my $depth = scalar @dirs;
@@ -116,7 +117,7 @@ sub add_files {
 }
 
 sub configure {
-    my ($self) = @_;
+    my ( $self, @build_args ) = @_;
 
     my @changed_files;
 
@@ -149,7 +150,7 @@ sub configure {
         try {
             $self->logger->debug("Configuring path '$path'");
 
-            my ($change_type) = $file->configure();
+            my ($change_type) = $file->configure(@build_args);
             if ( $change_type != $CHANGE_NONE ) {
                 push @changed_files, $path;
             }
@@ -173,9 +174,11 @@ sub configure {
         my @registered_paths =
             $self->registry->paths_for_tag( $self->tag, $self->supercedes );
 
-        for my $path ( $self->sort_files_leaves_first(@registered_paths) ) {
-            if ( !$current_paths{$path->path} ) {
-                my $entry = $self->registry->get_entry_for_path($path);
+        for my $file ( $self->sort_files_leaves_first(\@registered_paths) ) {
+            my $path = $file->path;
+
+            if ( !$current_paths{$path} ) {
+                my $entry = $self->registry->get_data_for_path($path);
 
                 if ( !$entry->{permanent} ) {
                     try {
