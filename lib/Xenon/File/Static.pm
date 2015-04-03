@@ -13,7 +13,7 @@ sub _build_pathtype {
     return 'file';
 }
 
-sub default_options {
+sub _default_options {
     return {};
 }
 

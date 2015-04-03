@@ -13,11 +13,13 @@ sub _build_pathtype {
     return 'file';
 }
 
-sub default_options {
+sub _default_options {
     return {
-        POST_CHOMP => 1,
-        RELATIVE   => 0,
-        ABSOLUTE   => 0,
+        ABSOLUTE    => 0,
+        ANYCASE     => 0,
+        INTERPOLATE => 0,
+        POST_CHOMP  => 1,
+        RELATIVE    => 0,
     };
 }
 

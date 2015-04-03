@@ -16,7 +16,7 @@ use Moo::Role;
 
 with 'Xenon::Role::Log4perl', 'Xenon::Role::FileManager';
 
-requires 'build_data', 'default_options';
+requires 'build_data', '_default_options';
 
 # Replaces the standard source with a URI-type
 has '+source' => (
@@ -59,10 +59,10 @@ sub _build_options {
     return {};
 }
 
-around 'default_options' => sub {
-    my ( $orig, $class, %new_config ) = @_;
+sub default_options {
+    my ( $class_or_self, %new_config ) = @_;
 
-    state $config = $orig->($class);
+    state $config = $class_or_self->_default_options();
 
     if ( scalar keys %new_config > 0 ) {
         $config = { %{$config}, %new_config };
@@ -72,7 +72,7 @@ around 'default_options' => sub {
         return %{$config};
     }
 
-};
+}
 
 sub merge_options {
     my ($self) = @_;
