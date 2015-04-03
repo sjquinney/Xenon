@@ -8,6 +8,7 @@ use Moo;
 
 with 'Xenon::Role::Log4perl';
 
+use File::Spec ();
 use Try::Tiny;
 use Types::Standard qw(Str);
 use Types::Path::Tiny qw(AbsPath);
@@ -48,13 +49,62 @@ sub BUILD {
 
 }
 
-sub add_file {
-    my ( $self, $file_config ) = @_;
+sub sort_files_root_first {
+    my ( $self, $files ) = @_;
 
-    my $file = XenonFileManager->coerce($file_config);
+    my $root_first = sub { $a->[0] <=> $b->[0] || $a->[2] cmp $b->[2] };
+
+    my @sorted_files = $self->sort_files( $files, $root_first );
+
+    return @sorted_files;
+}
+
+sub sort_files_leaves_first {
+    my ( $self, $files ) = @_;
+
+    my $leaves_first = sub { $b->[0] <=> $a->[0] || $a->[2] cmp $b->[2] };
+
+    my @sorted_files = $self->sort_files( $files, $leaves_first );
+
+    return @sorted_files;
+}
+
+sub sort_files {
+    my ( $self, $files, $sort_sub ) = @_;
+
+    $sort_sub //= sub { $a->[1] cmp $b->[1] };
+    $files    //= $self->files;
+
+    # This uses File::Spec so that it is possible to pass in a list of
+    # strings not just Path::Tiny objects.
+
+    my @sorted_files =
+        map {
+            $_->[3]
+        }
+        sort $sort_sub
+        map {
+            my $path = $_->can('path') ? $_->path : $_;
+            my ( $vol, $dirs, $basename ) = File::Spec->splitpath("$path");
+            my @dirs = File::Spec->splitdir($dirs);
+            my $depth = scalar @dirs;
+            [ $depth, $path, $basename, $_ ];
+        }
+        @{ $files };
+
+    return @sorted_files;
+}
+
+sub add_files {
+    my ( $self, @new_files ) = @_;
 
     my $files = $self->files;
-    push @{$files}, $file;
+
+    for my $new_file (@new_files) {
+        my $file = XenonFileManager->coerce($new_file);
+        $self->logger->debug('Adding file: ' . $file->path);
+        push @{$files}, $file;
+    }
 
     return;
 }
@@ -62,12 +112,10 @@ sub add_file {
 sub configure {
     my ($self) = @_;
 
-    my @files = @{ $self->files };
-
     my @changed_files;
 
     my %current_paths;
-    for my $file (@files) {
+    for my $file ( $self->sort_files_root_first() ) {
         my $id = $file->id;
 
         # Whether we succeed or fail to configure the file we want to
@@ -157,7 +205,7 @@ sub load_files_directory {
             }
 
             try {
-                $self->add_file($item);
+                $self->add_files($item);
             } catch {
                 die "the data is malformed: $_\n";
             };
@@ -203,7 +251,7 @@ sub new_from_config {
                     }
 
                     try {
-                        $self->add_file($item);
+                        $self->add_files($item);
                     } catch {
                         if ( ref $item eq 'HASH' && exists $item->{id} ) {
                             die "files list item $count ($item->{id}) is malformed: $_\n";
