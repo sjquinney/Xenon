@@ -4,9 +4,11 @@ use warnings;
 
 use v5.10;
 
-use Moo::Role;
+use English qw(-no_match_vars);
 use Try::Tiny;
 use Xenon::Types qw(XenonBackupStyle);
+
+use Moo::Role;
 
 has 'backup_style' => (
     is      => 'ro',

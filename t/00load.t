@@ -15,6 +15,7 @@ use_ok('Xenon::Resource::File');
 use_ok('Xenon::Resource::Inline');
 use_ok('Xenon::Resource::URI');
 
+use_ok('Xenon::File::Delete');
 use_ok('Xenon::File::Directory');
 use_ok('Xenon::File::Link');
 use_ok('Xenon::File::Static');
