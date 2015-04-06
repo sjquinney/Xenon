@@ -155,7 +155,7 @@ sub configure {
         # push the path onto the list so that it doesn't get removed
         # or deregistered.
 
-        $current_paths{$path} = $file;
+        $current_paths{"$path"} = $file;
 
         try {
             $self->logger->debug("Configuring path '$path'");
@@ -181,69 +181,83 @@ sub configure {
     # directories being empty before any attempt is made to remove.
 
     if ( $self->has_registry ) {
-        my @registered_paths =
-            $self->registry->paths_for_tag( $self->tag, $self->supercedes );
-
-        for my $file ( $self->sort_files_leaves_first(\@registered_paths) ) {
-            my $path = $file->path;
-
-            if ( !$current_paths{$path} ) {
-                my $entry = $self->registry->get_data_for_path($path);
-
-                if ( !$entry->{permanent} ) {
-                    if ( !$self->dryrun ) {
-                        $self->registry->deregister_path(
-                            $self->tag, $self->supercedes, $path
-                        );
-                    }
-
-                    if ( $path->exists ) {
-                        $self->logger->info("Removing path '$path' which is now unmanaged");
-                        try {
-                            if ( $path->is_dir ) {
-
-                                # Directories are only removed when empty
-
-                                if ( scalar $path->children > 0 ) {
-
-                                    if ($self->dryrun) {
-                                        $self->logger->info("Dry-run: Cannot remove directory '$path': non-empty");
-                                    } else {
-                                        die "non-empty directory\n";
-                                    }
-
-                                } else {
-
-                                    if ($self->dryrun) {
-                                        $self->logger->info("Dry-run: Would remove directory '$path'");
-                                    } else {
-                                        rmdir $path or die "$!\n";
-                                    }
-
-                                }
-                            } else {
-
-                                if ($self->dryrun) {
-                                    $self->logger->info("Dry-run: Would remove file '$path'");
-                                } else {
-                                    $path->remove or die "$!\n";
-                                }
-
-                            }
-                        } catch {
-                            $self->logger->error("Failed to remove path '$path': $_");
-                        };
-
-                    }
-
-                }
-
-            }
-        }
-
+        $self->cleanup_unmanaged_paths(\%current_paths);
     }
 
     return @changed_files;
+}
+
+sub cleanup_unmanaged_paths {
+    my ( $self, $current_paths ) = @_;
+
+    my @registered_paths =
+        $self->registry->paths_for_tag( $self->tag, $self->supercedes );
+
+    for my $path ( $self->sort_files_leaves_first(\@registered_paths) ) {
+
+        if ( exists $current_paths->{"$path"} ) {
+            next;
+        }
+
+        my $entry = $self->registry->get_data_for_path($path);
+
+        # Stop here if the path is marked as permanent. Do not
+        # deregister, it is useful to know which tag the path was
+        # associated with when it was created.
+
+        if ( $entry->{permanent} ) {
+            next;
+        }
+
+        if ( !$self->dryrun ) {
+            $self->registry->deregister_path(
+                $self->tag, $self->supercedes, $path
+                );
+        }
+
+        if ( !$path->exists ) {
+            next;
+        }
+
+        $self->logger->info("Removing path '$path' which is now unmanaged");
+        try {
+            if ( $path->is_dir ) {
+
+                # Directories are only removed when empty
+
+                if ( scalar $path->children > 0 ) {
+
+                    if ($self->dryrun) {
+                        $self->logger->info("Dry-run: Cannot remove directory '$path': non-empty");
+                    } else {
+                        die "non-empty directory\n";
+                    }
+
+                } else {
+
+                    if ($self->dryrun) {
+                        $self->logger->info("Dry-run: Would remove directory '$path'");
+                    } else {
+                        rmdir $path or die "$!\n";
+                    }
+
+                }
+            } else {
+
+                if ($self->dryrun) {
+                    $self->logger->info("Dry-run: Would remove file '$path'");
+                } else {
+                    $path->remove or die "$!\n";
+                }
+
+            }
+        } catch {
+            $self->logger->error("Failed to remove path '$path': $_");
+        };
+
+    }
+
+    return;
 }
 
 sub load_files_directory {
