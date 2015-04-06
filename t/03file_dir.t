@@ -4,9 +4,6 @@ use warnings;
 
 use v5.10;
 
-use Log::Log4perl qw(:easy);
-Log::Log4perl->easy_init($DEBUG);
-
 use File::Temp qw(mktemp);
 
 use Test::More;
