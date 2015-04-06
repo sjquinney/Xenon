@@ -20,8 +20,11 @@ use_ok('Xenon::File::Link');
 use_ok('Xenon::File::Static');
 use_ok('Xenon::File::Touch');
 use_ok('Xenon::File::TT');
+use_ok('Xenon::File::LCFG');
 use_ok('Xenon::File::LCFGTT');
 
 use_ok('Xenon::Registry::DBI');
+
+use_ok('Xenon::FileBuilder');
 
 done_testing;
