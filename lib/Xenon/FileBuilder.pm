@@ -11,7 +11,7 @@ with 'Xenon::Role::Log4perl';
 use File::Spec ();
 use Scalar::Util ();
 use Try::Tiny;
-use Types::Standard qw(ArrayRef Str);
+use Types::Standard qw(ArrayRef Bool Str);
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use Xenon::Constants qw(:change);
@@ -41,6 +41,12 @@ has 'supercedes' => (
     is        => 'ro',
     isa       => ArrayRef,
     default   => sub { [] },
+);
+
+has 'dryrun' => (
+    is      => 'ro',
+    isa     => Bool,
+    default => sub { 0 },
 );
 
 sub _build_files {
@@ -123,6 +129,10 @@ sub configure {
 
     my %current_paths;
     for my $file ( $self->sort_files_root_first() ) {
+
+        # Map in the current setting for the dryrun attribute
+        $file->dryrun($self->dryrun);
+
         my $path = $file->path;
 
         if ( $self->has_registry ) {
@@ -155,7 +165,7 @@ sub configure {
                 push @changed_files, $path;
             }
 
-            if ( $self->has_registry ) {
+            if ( $self->has_registry && !$self->dryrun ) {
                 $self->registry->register_path(
                     $self->tag, $self->supercedes,
                     $path, $file->permanent,
@@ -181,27 +191,51 @@ sub configure {
                 my $entry = $self->registry->get_data_for_path($path);
 
                 if ( !$entry->{permanent} ) {
+                    if ( !$self->dryrun ) {
+                        $self->registry->deregister_path(
+                            $self->tag, $self->supercedes, $path
+                        );
+                    }
 
                     if ( $path->exists ) {
                         $self->logger->info("Removing path '$path' which is now unmanaged");
                         try {
                             if ( $path->is_dir ) {
+
+                                # Directories are only removed when empty
+
                                 if ( scalar $path->children > 0 ) {
-                                die "non-empty directory\n";
+
+                                    if ($self->dryrun) {
+                                        $self->logger->info("Dry-run: Cannot remove directory '$path': non-empty");
+                                    } else {
+                                        die "non-empty directory\n";
+                                    }
+
                                 } else {
-                                    rmdir $path or die "$!\n";
+
+                                    if ($self->dryrun) {
+                                        $self->logger->info("Dry-run: Would remove directory '$path'");
+                                    } else {
+                                        rmdir $path or die "$!\n";
+                                    }
+
                                 }
                             } else {
-                                $path->remove or die "$!\n";
+
+                                if ($self->dryrun) {
+                                    $self->logger->info("Dry-run: Would remove file '$path'");
+                                } else {
+                                    $path->remove or die "$!\n";
+                                }
+
                             }
                         } catch {
                             $self->logger->error("Failed to remove path '$path': $_");
-                        } 
+                        };
+
                     }
 
-                    $self->registry->deregister_path(
-                        $self->tag, $self->supercedes, $path
-                    );
                 }
 
             }
@@ -210,7 +244,6 @@ sub configure {
     }
 
     return @changed_files;
-
 }
 
 sub load_files_directory {
