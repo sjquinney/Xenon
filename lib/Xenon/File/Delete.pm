@@ -12,7 +12,7 @@ with 'Xenon::Role::FileManager', 'Xenon::Role::Backup';
 
 use namespace::clean;
 
-# source is meaningless for directories
+# source is meaningless here
 has '+source' => (
     required => 0,
     init_arg => undef,
