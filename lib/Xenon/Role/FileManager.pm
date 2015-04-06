@@ -98,6 +98,12 @@ has 'permanent' => (
     default => sub { 0 },
 );
 
+has 'dryrun' => (
+    is      => 'rw',
+    isa     => Bool,
+    default => sub { 0 },
+);
+
 # Sensible default behaviour. Typically the class which implements
 # this role will provide a local version of the method which just
 # simply returns the correct path type.
@@ -152,13 +158,25 @@ sub prebuild {
             if ( $self->zap ) {
                 if ( $path->is_dir ) {
                     try {
-                        $path->remove_tree( { safe => 0 } );
+
+                        if ($self->dryrun) {
+                            $self->logger->info("Dry-run: Will zap directory '$path' as it is not the correct path type");
+                        } else {
+                            $path->remove_tree( { safe => 0 } );
+                        }
+
                     } catch {
                         die "Failed to remove directory '$path': $_\n";
                     };
                 } else {
-                    $path->remove or
-                        die "Failed to remove file '$path': $_\n";
+
+                    if ($self->dryrun) {
+                        $self->logger->info("Dry-run: Will zap file '$path' as it is not the correct path type");
+                    } else {
+                        $path->remove or
+                            die "Failed to remove file '$path': $_\n";
+                    }
+
                 }
             } else {
                 die "Path '$path' already exists but is not the correct type and zap option is not enabled\n";
@@ -202,7 +220,13 @@ sub check_parent {
         if ( $self->mkdir ) {
             $logger->debug("Attempting to create parent directory '$parent'");
             try {
-                $parent->mkpath;
+
+                if ($self->dryrun) {
+                    $logger->info("Dry-run: Will create parent directory '$parent'");
+                } else {
+                    $parent->mkpath;
+                }
+
             } catch {
                 die "Failed to create parent directory '$parent': $_\n";
             };
@@ -273,9 +297,13 @@ sub set_access_controls {
 
         if ( $new_owner != $ID_UNCHANGED || $new_group != $ID_UNCHANGED ) {
 
-            $self->logger->debug("chown $new_owner:$new_group $path");
-            chown $new_owner, $new_group, "$path"
-                or die "Could not chown $new_owner:$new_group '$path': $OS_ERROR\n";
+            if ( $self->dryrun ) {
+                $self->logger->info("Dry-run: Will chown $new_owner:$new_group '$path'");
+            } else {
+                $self->logger->debug("chown $new_owner:$new_group $path");
+                chown $new_owner, $new_group, "$path"
+                    or die "Could not chown $new_owner:$new_group '$path': $OS_ERROR\n";
+            }
 
         }
     }
@@ -284,12 +312,22 @@ sub set_access_controls {
     my $current_mode  = $stat->mode & 07777; # Remove the file type part
 
     if ( $current_mode != $required_mode ) {
-        $self->logger->debug(sprintf 'Current mode: 0%o, required mode: 0%o', $current_mode, $required_mode );
-        $path->chmod($required_mode)
-            or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
+
+        if ( $self->dryrun ) {
+            $self->logger->info(sprintf 'Dry-run: Will chmod 0%o \'%s\'', $required_mode, $path );
+        } else {
+            $self->logger->debug(sprintf 'Current mode: 0%o, required mode: 0%o', $current_mode, $required_mode );
+
+            $path->chmod($required_mode)
+                or die "Could not chmod $required_mode '$path': $OS_ERROR\n";
+        }
+
     }
 
     for my $attr_mgr (@{ $self->attributes }) {
+        # Map in the current setting for the dryrun attribute
+        $attr_mgr->dryrun($self->dryrun);
+
         $attr_mgr->configure($path);
     }
 

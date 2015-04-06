@@ -238,13 +238,17 @@ sub configure {
     if ($needs_update) {
         $self->logger->info("Need to update Linux ACLs for '$path'");
 
-        Linux::ACL::setfacl( $path, @setfacl_args )
-            or die "Failed to set Linux ACLs on '$path'\n";
+        if ( $self->dryrun ) {
+           $self->logger->info("Dry-run: Will update Linux ACLs for '$path'");
+        } else {
+            Linux::ACL::setfacl( $path, @setfacl_args )
+                or die "Failed to set Linux ACLs on '$path'\n";
+            $self->logger->info("Successfully set Linux ACLs on '$path'");
+        }
 
-        $self->logger->info("Successfully set Linux ACLs on '$path'");
     }
 
-    return
+    return;
 }
 
 1;

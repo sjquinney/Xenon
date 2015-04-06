@@ -54,9 +54,15 @@ sub build {
             } else {
                 $self->logger->info("Update required for symlink '$linkname'");
                 $change_type = $CHANGE_UPDATED;
-                $self->logger->info("Deleting symlink '$linkname' to '$current'");
-                $linkname->remove
-                    or die "Could not remove old link '$linkname': $OS_ERROR\n";
+
+                if ( $self->dryrun ) {
+                    $self->logger->info("Dry-run: Will remove symlink '$linkname'");
+                } else {
+                    $self->logger->info("Deleting symlink '$linkname' to '$current'");
+                    $linkname->remove
+                        or die "Could not remove old link '$linkname': $OS_ERROR\n";
+                }
+
             }
         } else {
             $change_type = $CHANGE_CREATED;
@@ -64,8 +70,14 @@ sub build {
 
         if ($needs_update) {
             $self->logger->info("Creating symlink '$linkname' to '$target'");
-            symlink "$target", "$linkname"
-                or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
+
+            if ( $self->dryrun ) {
+                $self->logger->info("Dry-run: Will create symlink '$linkname' to '$target'");
+            } else {
+                symlink "$target", "$linkname"
+                    or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
+            }
+
         }
 
     } catch {

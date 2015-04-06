@@ -10,4 +10,10 @@ with 'Xenon::Role::Log4perl','Xenon::Role::ConfigFromJSON';
 
 requires 'configure';
 
+has 'dryrun' => (
+    is      => 'rw',
+    isa     => Bool,
+    default => sub { 0 },
+);
+
 1;

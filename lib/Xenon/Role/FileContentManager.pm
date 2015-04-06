@@ -153,24 +153,29 @@ sub build {
         # succeeded.
 
         try {
-            my $tmpfh = File::Temp->new( TEMPLATE => 'xenonXXXXXX',
-                                         DIR      => $path->dirname,
-                                         UNLINK   => 1 )
-                or die "Could not open temporary file: $OS_ERROR\n";
 
-            my $tempname = $tmpfh->filename;
+            if ( $self->dryrun ) {
+                $self->logger->info("Dry-run: Will write data to '$path'");
+            } else {
+                my $tmpfh = File::Temp->new( TEMPLATE => 'xenonXXXXXX',
+                                             DIR      => $path->dirname,
+                                             UNLINK   => 1 )
+                    or die "Could not open temporary file: $OS_ERROR\n";
 
-            $tmpfh->print($data)
-                or die "Could not write to temporary file: $OS_ERROR\n";
-            $tmpfh->close()
-                or die "Could not close temporary file: $OS_ERROR\n";
+                my $tempname = $tmpfh->filename;
 
-            $self->set_access_controls($tempname);
+                $tmpfh->print($data)
+                    or die "Could not write to temporary file: $OS_ERROR\n";
+                $tmpfh->close()
+                    or die "Could not close temporary file: $OS_ERROR\n";
 
-            $self->make_backup();
+                $self->set_access_controls($tempname);
+
+                $self->make_backup();
             
-            if ( !rename $tempname, "$path" ) {
-                die "Could not rename temporary file: $OS_ERROR\n";
+                if ( !rename $tempname, "$path" ) {
+                    die "Could not rename temporary file: $OS_ERROR\n";
+                }
             }
 
         } catch {

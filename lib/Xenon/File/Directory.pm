@@ -43,26 +43,30 @@ sub build {
         if ( !$target->exists ) {
             $change_type = $CHANGE_CREATED;
 
-            $self->logger->info("Creating directory '$target'");
-            my %options;
-            if ( $self->has_owner ) {
-                $options{owner} = $self->owner;
+            if ( $self->dryrun ) {
+                $self->logger->info("Dry-run: Will create directory '$target'");
+            } else {
+                $self->logger->info("Creating directory '$target'");
+                my %options;
+                if ( $self->has_owner ) {
+                    $options{owner} = $self->owner;
+                }
+                if ( $self->has_group ) {
+                    $options{group} = $self->group;
+                }
+                $options{mode} = $self->required_mode;
+
+                $target->mkpath( \%options );
+
+                # Even though the owner/group/mode has been set when
+                # creating the directory we still need to apply any
+                # other ACLs. If the directory already exists then
+                # this will have already been done in the prebuild
+                # phase.
+
+                $self->set_access_controls($target);
             }
-            if ( $self->has_group ) {
-                $options{group} = $self->group;
-            }
-            $options{mode} = $self->required_mode;
-
-            $target->mkpath( \%options );
-
-            # Even though the owner/group/mode has been set when
-            # creating the directory we still need to apply any other
-            # ACLs. If the directory already exists then this will
-            # have already been done in the prebuild phase.
-
-            $self->set_access_controls($target);
         }
-
 
     } catch {
         die "Failed to create directory '$target': $_";

@@ -42,12 +42,17 @@ sub build {
 
         $self->logger->info("Creating empty file '$target'");
 
-        $target->touch();
+        if ($self->dryrun) {
+            $self->logger->info("Dry-run: Will create empty file '$target'");
+        } else {
+            $target->touch();
 
-        # If the file already exists then ACLs will have already
-        # been set in the prebuild phase.
+            # If the file already exists then ACLs will have already
+            # been set in the prebuild phase.
 
-        $self->set_access_controls($target);
+            $self->set_access_controls($target);
+        }
+
     }
 
     return $change_type;
