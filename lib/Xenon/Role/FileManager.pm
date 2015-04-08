@@ -253,7 +253,7 @@ sub required_mode {
         # there is one, otherwise just use the default.
 
         if ( $self->path->exists ) {
-            $required_mode = $self->path->stat->mode & 07777;
+            $required_mode = $self->path->stat->mode & oct('07777');
             $self->logger->debug(sprintf 'Using current mode 0%o', $required_mode );
         } else {
             $required_mode = $self->default_mode;
@@ -309,7 +309,7 @@ sub set_access_controls {
     }
 
     my $required_mode = $self->required_mode;
-    my $current_mode  = $stat->mode & 07777; # Remove the file type part
+    my $current_mode  = $stat->mode & oct('07777'); # Remove the file type part
 
     if ( $current_mode != $required_mode ) {
 
