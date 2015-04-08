@@ -21,8 +21,9 @@ has 'backup_style' => (
 );
 
 sub backup_file {
-    my ( $self, $path ) = @_;
+    my ( $self, $path, $time ) = @_;
     $path //= $self->path;
+    $time //= time;
 
     my $style = $self->backup_style;
 
@@ -32,7 +33,7 @@ sub backup_file {
 
     my $suffix;
     if ( $style eq 'epochtime' ) {
-        $suffix = q{.} . time;
+        $suffix = q{.} . $time;
     } else {
         $suffix = q{~};
     }
