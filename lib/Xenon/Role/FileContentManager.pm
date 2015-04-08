@@ -165,11 +165,16 @@ sub build {
 
                 $self->set_access_controls($tempname);
 
-                $self->make_backup();
-            
-                if ( !rename $tempname, "$path" ) {
-                    die "Could not rename temporary file: $OS_ERROR\n";
+                my $backup_file = $self->make_backup();
+
+                # Ensure that the backup file has all the correct ACLs
+                if ( defined $backup_file ) {
+                    $self->set_access_controls($backup_file);
                 }
+
+                rename $tempname, "$path"
+                    or die "Could not rename temporary file: $OS_ERROR\n";
+
             }
 
         } catch {
