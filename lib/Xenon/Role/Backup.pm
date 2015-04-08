@@ -20,6 +20,28 @@ has 'backup_style' => (
     default => sub { 'tilde' },
 );
 
+sub backup_file {
+    my ( $self, $path ) = @_;
+    $path //= $self->path;
+
+    my $style = $self->backup_style;
+
+    if ( $style eq 'none' ) {
+        return;
+    }
+
+    my $suffix;
+    if ( $style eq 'epochtime' ) {
+        $suffix = q{.} . time;
+    } else {
+        $suffix = q{~};
+    }
+
+    my $backup_file = AbsPath->coerce( $path . $suffix );
+
+    return $backup_file;
+}
+
 sub make_backup {
     my ( $self, $path ) = @_;
 
@@ -40,29 +62,20 @@ sub make_backup {
         return;
     }
 
-    my $copy_made = 0;
-
     my $style = $self->backup_style;
     if ( $style eq 'none' ) {
-        return $copy_made;
+        return;
     }
 
     # Select the required backup file name
 
-    my $suffix;
-    if ( $style eq 'epochtime' ) {
-        $suffix = q{.} . time;
-    } else {
-        $suffix = q{~};
-    }
-
-    my $backup_file = AbsPath->coerce($path . $suffix);
+    my $backup_file = $self->backup_file($path);
 
     # Check if we actually need to make a new backup
 
     if ( $backup_file->exists ) {
         if ( $path->digest('SHA-256') eq $backup_file->digest('SHA-256') ) {
-            return $copy_made;
+            return $backup_file;
         }
     }
 
@@ -112,10 +125,8 @@ sub make_backup {
                 or die "Could not remove previous version: $OS_ERROR\n";
         }
 
-        rename $tmpfile, $backup_file
+        rename $tmpfile, "$backup_file"
             or die "Could not rename '$tmpfile': $OS_ERROR\n";
-
-        $copy_made = 1;
 
     } catch {
         die "Failed to make backup file '$backup_file' for '$path': $_";
@@ -123,7 +134,7 @@ sub make_backup {
         umask $umask;
     };
 
-    return $copy_made;
+    return $backup_file;
 }
 
 1;
@@ -139,20 +150,18 @@ This documentation refers to Xenon::Role::Backup version 1.0.0
 
 =head1 SYNOPSIS
 
-  package Xenon::File::Foo;
+  {
+    package Xenon::File::Foo;
 
-  use Moo;
-  with 'Xenon::Role::Backup';
-
-
-  package main;
-
-  use Xenon::File::Foo;
+    use Moo;
+    with 'Xenon::Role::Backup';
+  }
 
   my $foo = Xenon::File::Foo->new( backup_style => "tilde" );
-  $foo->make_backup("/tmp/example.txt");
+  my $backup_file = $foo->make_backup("/tmp/example.txt");
 
-  # Backup copy is now /tmp/example.txt~
+  # Backup copy is /tmp/example.txt~
+  print "Backup copy is $backup_file\n";
 
 =head1 DESCRIPTION
 
@@ -183,25 +192,52 @@ backup will be created.
 
 =head1 SUBROUTINES/METHODS
 
-This role adds one method to a class:
+This role adds two methods to a class:
 
 =over
 
+=item backup_file($path)
+
+Optionally takes a path, if none is specified then the value of the
+C<path> attribute will be used.
+
+This will return the path of the backup file for the specified path as
+a L<Path::Tiny> object. The name of the backup file is dependent upon
+the setting of the C<backup_style> attribute, see above for details.
+
+Beware, if using the C<epochtime> style then this will return a
+different file name every time it is called.
+
+Note that if the style is C<none> then this method will return the
+C<undef> value.
+
 =item make_backup($path)
 
-If the path exists and it is a file (i.e. not a directory or symlink)
-then a backup copy will be made. The name of the backup file is
-dependent upon the setting of the C<backup_style> attribute, see above
-for details.
+Optionally takes a path, if none is specified then the value of the
+C<path> attribute will be used.
 
-The backup preserves the owner, group, mode and timestamps. Note that
-other attributes such as ACLs and xattr will NOT be preserved. That
-must be handled separately if it is required.
+If the path exists and it is a file (i.e. not a directory or symlink)
+then a backup copy will be made. The file name comes from the
+C<backup_file> method, see above for details.
+
+A copy will not be made if the style is C<none> or if the current
+version of the backup file has the same digest as the current target
+file.
+
+This method will return a L<Path::Tiny> object which represents the
+backup file or an C<undef> value if the style is C<none>, the path
+does not exist or it is not a file.
+
+The backup file copy preserves the owner, group, mode and
+timestamps. Note that other attributes such as ACLs and xattr will
+B<NOT> be preserved. That must be handled separately if it is
+required.
 
 Any file with the same name as the backup file will be deleted before
 the backup copy is created.
 
-If a problem occurs this method will die with a useful error message.
+If a problem occurs whilst attempting to make a backup copy this
+method will die with a useful error message.
 
 =back
 

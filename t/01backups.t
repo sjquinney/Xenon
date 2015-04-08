@@ -54,8 +54,9 @@ my @dir_contents = sort $ignore_case ( '.', '..', 'example.txt', 'testdir', 'tes
 my $test_none  = Xenon::Test->new( backup_style => 'none' );
 
 is( $test_none->backup_style, 'none', 'backup style is \'none\'' );
+is( $test_none->backup_file($test_file), undef, 'no backup file name' );
 
-is( $test_none->make_backup($test_file), 0, 'no copy made' );
+is( $test_none->make_backup($test_file), undef, 'no copy made' );
 
 is( $test_none->make_backup($test_nonexist), undef, 'no copy of non-existent file' );
 is( $test_none->make_backup($test_dir), undef, 'no copy of directory' );
@@ -68,11 +69,16 @@ is_deeply( \@dir_none, \@dir_contents, 'no backup created' );
 # 'tilde' style
 
 my $test_tilde = Xenon::Test->new( backup_style => 'tilde' );
+my $tilde_file = $test_file . '~';
 
 is( $test_tilde->backup_style, 'tilde', 'backup style is \'tilde\'' );
+is( $test_tilde->backup_file($test_file), $tilde_file, 'tilde backup file name' );
 
-is( $test_tilde->make_backup($test_file), 1, 'tilde copy made' );
-is( $test_tilde->make_backup($test_file), 0, 'second copy not made' );
+is( $test_tilde->make_backup($test_file), $tilde_file, 'tilde copy made' );
+my $tilde_inode1 = (stat $tilde_file)[1];
+is( $test_tilde->make_backup($test_file), $tilde_file, 'second copy not made' );
+my $tilde_inode2 = (stat $tilde_file)[1];
+ok( $tilde_inode1 == $tilde_inode2, 'second copy not made, same inode' );
 
 is( $test_tilde->make_backup($test_nonexist), undef, 'no copy of non-existent file' );
 is( $test_tilde->make_backup($test_dir), undef, 'no copy of directory' );
@@ -90,15 +96,18 @@ my $fh2 = IO::File->new( $test_file, 'w' )
 $fh2->say('hello world again');
 $fh2->close or die "Could not close '$test_file': $!\n";
 
-is( $test_tilde->make_backup($test_file), 1, 'new copy not made' );
+is( $test_tilde->make_backup($test_file), $tilde_file, 'new copy made' );
+my $tilde_inode3 = (stat $tilde_file)[1];
+ok( $tilde_inode1 != $tilde_inode3, 'new copy made, different inode' );
 
 # 'epochtime' style
 
 my $test_epoch = Xenon::Test->new( backup_style => 'epochtime' );
 
 is( $test_epoch->backup_style, 'epochtime', 'backup style is \'epochtime\'' );
+like( $test_epoch->backup_file($test_file), qr/^\Q$test_file\E\.\d+$/, 'epoch backup file name' );
 
-is( $test_epoch->make_backup($test_file), 1, 'epoch copy made' );
+like( $test_epoch->make_backup($test_file),  qr/^\Q$test_file\E\.\d+$/, 'epoch copy made' );
 
 is( $test_epoch->make_backup($test_nonexist), undef, 'no copy of non-existent file' );
 is( $test_epoch->make_backup($test_dir), undef, 'no copy of directory' );
