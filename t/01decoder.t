@@ -4,7 +4,7 @@ use warnings;
 
 use v5.10;
 
-use Test::More tests => 7;
+use Test::More;
 
 BEGIN { use_ok( 'Xenon::Encoding::Base64' ); }
 
@@ -102,3 +102,36 @@ if (open OLD, "/var/tmp/last-hadoop-jobs.txt") {
 EOT
 
 is( $decoder->decode($code_in), $code_out, 'Perl code test' );
+
+# Test a class which implements Encoder and Decoder
+
+{
+    package Xenon::Encoding::Rot13;
+
+    use Moo;
+    with 'Xenon::Role::ContentEncoder', 'Xenon::Role::ContentDecoder';
+
+    sub encode {
+        my ( $self, $in ) = @_;
+        my $out = $in;
+        $out =~ tr/A-Za-z/N-ZA-Mn-za-m/;
+
+        return $out;
+    }
+    sub decode {
+        my ( $self, $in ) = @_;
+        return $self->encode($in);
+    }
+
+}
+
+my $rot13 = Xenon::Encoding::Rot13->new();
+
+isa_ok( $rot13, 'Xenon::Encoding::Rot13' );
+
+can_ok( $rot13, 'decode', 'encode' );
+
+is( $rot13->encode('hello world'), 'uryyb jbeyq', 'rot13 encode test' );
+is( $rot13->decode('uryyb jbeyq'), 'hello world', 'rot13 decode test' );
+
+done_testing;
