@@ -76,7 +76,8 @@ details.
 =head1 DEPENDENCIES
 
 This module is powered by L<Moo>. It also requires the
-L<Xenon::Role::ConfigFromJSON> role.
+L<Xenon::Role::ConfigFromJSON> role, to use that role the L<JSON>
+module must be available.
 
 =head1 SEE ALSO
 
