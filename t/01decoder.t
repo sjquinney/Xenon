@@ -8,13 +8,17 @@ use Test::More;
 
 BEGIN { use_ok( 'Xenon::Encoding::Base64' ); }
 
-my $decoder = Xenon::Encoding::Base64->new();
+my $base64 = Xenon::Encoding::Base64->new();
 
-isa_ok( $decoder, 'Xenon::Encoding::Base64' );
+isa_ok( $base64, 'Xenon::Encoding::Base64' );
 
-can_ok( $decoder, 'decode' );
+can_ok( $base64, 'decode', 'encode' );
 
-is( $decoder->decode('aGVsbG8gd29ybGQ='), 'hello world', 'decode test' );
+is( $base64->encode( "foo\nbar\n\nbaz", { style => 'lcfg' } ), "Zm9vCg==\\nYmFyCg==\\nCg==\\nYmF6Cg==\\n\n", 'lcfg-style base64 encode test' );
+
+is( $base64->encode( "foo\nbar\n\nbaz" ), "Zm9vCmJhcgoKYmF6\n", 'standard-style base64 encode test' );
+
+is( $base64->decode('aGVsbG8gd29ybGQ='), 'hello world', 'normal-style base64 decode test' );
 
 # This is the slightly bizarre LCFG-style base64 encoding, note that
 # those are *literal* \n strings and NOT newlines.
@@ -33,7 +37,7 @@ sharedscripts
 }
 EOT
 
-is( $decoder->decode($lcfg_in), $lcfg_out, 'LCFG-style decode test' );
+is( $base64->decode($lcfg_in), $lcfg_out, 'LCFG-style decode test' );
 
 # Same configuration file, encoded in a more normal style.
 
@@ -44,7 +48,7 @@ EOT
 
 # Test to ensure encoding some Perl works correctly
 
-is( $decoder->decode($normal), $lcfg_out, 'Normal-style decode test' );
+is( $base64->decode($normal), $lcfg_out, 'Normal-style decode test' );
 
 my $code_in = 'IyEvdXNyL2Jpbi9wZXJsCgojICBraWxsIGpvYnMgdGhhdCBhcmUgcnVubmluZyB0b28gbG9uZy4K\nCgppZiAob3BlbiBPTEQsICIvdmFyL3RtcC9sYXN0LWhhZG9vcC1qb2JzLnR4dCIpIHsKCiAgbXkg\nJW9sZDsKCiAgIyBnZXQgbGlzdCBvZiBqb2JzIHRoYXQgd2VyZSBydW5uaW5nIGxhc3QgdGltZSB3\nZSBjaGVja2VkCiAgd2hpbGUoIWVvZihPTEQpKXsKICAgICRqb2IgPSA8T0xEPjsKICAgICgkam9i\nSUQpID0gc3BsaXQoL1xzKy8sJGpvYik7CiAgICAjICBwcmludCAiJGpvYklEXG4iOwogICAgJG9s\nZHskam9iSUR9PTE7CiAgfQoKICBjbG9zZSBPTEQ7CgogIG9wZW4gSk9CUywgICIvb3B0L2hhZG9v\ncC9oYWRvb3AtMC4yMC4yL2Jpbi9oYWRvb3Agam9iIC1saXN0IHwiIG9yIGRpZSAiY291bGQgbm90\nIG9wZW4gcGlwZSAtLWNoZWNrIHRoYXQgaGFkb29wIGlzIGluIHBhdGgiOwogIG9wZW4gT0xELCAi\nPi92YXIvdG1wL2xhc3QtaGFkb29wLWpvYnMudHh0IiBvciBkaWUgImNhbm5vdCBjcmVhdGUgbGlz\ndCBvZiBydW5uaW5nIGpvYnMiOwoKICAjd2hpbGUoIWVvZihKT0JTKSl7CiAgIyAgJGpvYiA9IDxK\nT0JTPjsKICB3aGlsZSgkam9iID0gPEpPQlM+KSB7CiAgICBpZiAoJGpvYiA9fiAvXmpvYl8uKi8p\nIHsKICAgICAgKCRqb2JJRCkgPSBzcGxpdCgvXHMrLywkam9iKTsKICAgICAgIyAgICBwcmludCAi\nSm9iIElEOiAkam9iSURcbiI7CiAgICAgIGlmICgkb2xkeyRqb2JJRH0pIHsKCXN5c3RlbSAiL29w\ndC9oYWRvb3AvaGFkb29wLTAuMjAuMi9iaW4vaGFkb29wIGpvYiAta2lsbCAkam9iSUQiOwoJcHJp\nbnQgIktpbGxpbmcgam9iICRqb2JJRFxuIjsKICAgICAgfSBlbHNlIHsKCXByaW50IE9MRCAiJGpv\nYklEXG4iOwogICAgICB9CiAgICB9CiAgfQogIGNsb3NlIE9MRDsKICBjbG9zZSBKT0JTOwoKfSBl\nbHNlIHsKCiAgIyBJZiB3ZSBjYW4ndCBvcGVuIHRoZSBqb2JzIGZpbGUgZnJvbSBsYXN0IHRpbWUs\nCiAgIyBtYWtlIGEgbmV3IGVtcHR5IGZpbGUgdGhlbiBleGl0LgoKICAjIHN5c3RlbSBnaXZlcyBh\nIDAgZXhpdCBzdGF0dXMgb24gc3VjY2VzcwogIGlmIChzeXN0ZW0gIi9iaW4vdG91Y2ggL3Zhci90\nbXAvbGFzdC1oYWRvb3Atam9icy50eHQiKSB7CiAgICBkaWUgImNhbid0IGNyZWF0ZSAvdmFyL3Rt\ncC9sYXN0LWhhZG9vcC1qb2JzLnR4dCI7CiAgfQoKfQo=';
 
@@ -101,7 +105,7 @@ if (open OLD, "/var/tmp/last-hadoop-jobs.txt") {
 }
 EOT
 
-is( $decoder->decode($code_in), $code_out, 'Perl code test' );
+is( $base64->decode($code_in), $code_out, 'Perl code test' );
 
 # Test a class which implements Encoder and Decoder
 
