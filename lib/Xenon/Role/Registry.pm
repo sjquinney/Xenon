@@ -4,8 +4,9 @@ use warnings;
 
 use v5.10;
 
-use Moo::Role;
 use Types::Path::Tiny qw(AbsPath);
+
+use Moo::Role;
 
 with 'Xenon::Role::Log4perl';
 

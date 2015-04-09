@@ -7,10 +7,6 @@ use v5.10;
 use Readonly;
 Readonly my $ID_UNCHANGED => -1;
 
-use Moo::Role;
-
-with 'Xenon::Role::Log4perl';
-
 use URI::Escape ();
 use English qw(-no_match_vars);
 use Try::Tiny;
@@ -18,6 +14,10 @@ use Types::Path::Tiny qw(AbsPath);
 use Types::Standard qw(Bool Str);
 use Xenon::Constants qw(:change);
 use Xenon::Types qw(UID GID UnixMode XenonAttributeManagerList);
+
+use Moo::Role;
+
+with 'Xenon::Role::Log4perl';
 
 requires 'path_type_is_correct', 'build', 'default_mode';
 

@@ -9,9 +9,10 @@ Readonly my $DEFAULT_CONFIG_FILE => '/etc/xenon/log.conf';
 
 use Log::Log4perl qw(:easy);
  
-use Moo::Role;
 use Types::Path::Tiny qw(AbsPath);
 use Types::Standard qw(Bool InstanceOf ScalarRef Str);
+
+use Moo::Role;
 
 has 'debug' => (
     is      => 'rw',
