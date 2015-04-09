@@ -63,11 +63,12 @@ This role requires that the consuming class implements a C<encode>
 method. The C<encode> method must take an encoded string as an
 argument and return the encoded string.
 
-=item new_from_json
+=item new_from_json($json)
 
 This role also imports the L<Xenon::Role::ConfigFromJSON> which adds a
-C<new_from_json> method. See the documentation for that role for more
-details.
+C<new_from_json> method. This can be used to create a new instance
+with the option to specify attributes as a JSON file or string. See
+the documentation for that role for more details.
 
 =back
 
@@ -79,7 +80,7 @@ module must be available.
 
 =head1 SEE ALSO
 
-L<Xenon>, L<Xenon::Role::ContentEncoder>
+L<Xenon>, L<Xenon::Role::ContentDecoder>
 
 =head1 PLATFORMS
 
