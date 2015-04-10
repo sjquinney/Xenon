@@ -133,8 +133,8 @@ sub BUILD {
         my $path   = $self->path;
         my $source = $self->source;
 
-        if ( ref($path) eq ref($source) && "$path" eq "$source" ) {
-            die "Path cannot be the same as the Source\n";
+        if ( "$path" eq "$source" ) {
+            die "Path cannot be the same as the Source ($path)\n";
         }
     }
 
