@@ -44,10 +44,11 @@ has 'path' => (
 );
 
 has 'source' => (
-    is       => 'ro',
-    isa      => AbsPath,
-    coerce   => AbsPath->coercion,
-    required => 1,
+    is        => 'ro',
+    isa       => AbsPath,
+    coerce    => AbsPath->coercion,
+    required  => 1,
+    predicate => 'has_source',
 );
 
 has 'owner' => (
@@ -123,6 +124,21 @@ sub _build_pathtype {
     }
 
     return $pathtype;
+}
+
+sub BUILD {
+    my ($self) = @_;
+
+    if ( $self->has_source ) {
+        my $path   = $self->path;
+        my $source = $self->source;
+
+        if ( ref($path) eq ref($source) && "$path" eq "$source" ) {
+            die "Path cannot be the same as the Source\n";
+        }
+    }
+
+    return;
 }
 
 sub BUILDARGS {
