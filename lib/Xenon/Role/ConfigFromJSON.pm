@@ -18,8 +18,6 @@ sub new_from_json {
     # Defaults to a scalar reference to the string '{}', i.e. an empty hash
     $json //= \q({});
 
-    require JSON;
-
     my $data;
     if ( ScalarRef->check($json) ) {
         $data = ${$json};
@@ -44,6 +42,8 @@ sub new_from_json {
 
     my %args;
     try {
+        require JSON;
+
         my $args = JSON->new->relaxed(1)->decode($data);
 
         if ( HashRef->check($args) ) {
