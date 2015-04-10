@@ -60,11 +60,11 @@ be used to fetch data from a location. This location could be
 anything, for example a local file or a remote resource accessible via
 http.
 
-Xenon resources are used to provide the source data from which the
-contents of files are configured. The source might be used as the
-literal file contents or as a template which is processed to generate
-the contents. See the documentation for the
-L<Xenon::Role::FileContentManager> role for more details.
+Xenon resources are used to provide a standard API for fetching the
+source data from which the contents of files are configured. The
+source might be used as the literal file contents or as a template
+which is processed to generate the contents. See the documentation for
+the L<Xenon::Role::FileContentManager> role for more details.
 
 =head1 ATTRIBUTES
 
