@@ -8,6 +8,8 @@ use v5.10;
 
 use Moo::Role;
 
+use overload '""' => 'stringify';
+
 with 'Xenon::Role::Log4perl';
 
 requires 'fetch';
@@ -16,6 +18,14 @@ has 'source' => (
     is       => 'ro',
     required => 1,
 );
+
+sub stringify {
+    my ($self) = @_;
+
+    my $source = $self->source;
+
+    return "$source";
+}
 
 1;
 __END__
