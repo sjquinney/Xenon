@@ -7,7 +7,7 @@ use v5.10;
 use Cwd;
 use File::Spec;
 
-use Test::More tests => 11;
+use Test::More tests => 12;
 use Test::Exception;
 
 BEGIN { use_ok( 'Xenon::Resource::File' ); }
@@ -42,6 +42,8 @@ my $data = do { local $/; <DATA> };
 
 is( $res3->fetch, $data, 'fetch data from file' );
 
+my $res4 = Xenon::Resource::File->new( source => 'file:///tmp/example.txt' );
+is( $res4->source, '/tmp/example.txt', 'URI to path conversion' );
 
 __DATA__
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
