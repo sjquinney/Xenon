@@ -157,7 +157,7 @@ sub fetch {
             # cache the content of the response with a restricted
             # umask in case there is anything 'secret' in there
 
-            my $old_umask = umask '0007';
+            my $old_umask = umask oct('0007');
             $cache_file->spew($res->decoded_content);
             umask $old_umask;
 
@@ -192,13 +192,13 @@ sub fetch {
 }
 
 sub cache_file {
-    my ( $self, $cache_dir, $source ) = @_;
+    my ( $self, $cache_dir, $uri ) = @_;
 
     # This is a simple way of getting a unique safe file name based on
     # the URL
 
     my $ctx = Digest->new('SHA-1');
-    $ctx->add($source->canonical);
+    $ctx->add($uri->canonical);
     my $cache_file = $cache_dir->child($ctx->hexdigest);
 
     return $cache_file;
