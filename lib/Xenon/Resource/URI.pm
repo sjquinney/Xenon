@@ -2,6 +2,8 @@ package Xenon::Resource::URI; # -*- perl -*-
 use strict;
 use warnings;
 
+our $VERSION = v1.0.0;
+
 use v5.10;
 
 use Digest ();
@@ -105,7 +107,7 @@ sub fetch {
     my $source = $self->source;
 
     my $ua = LWP::UserAgent->new();
-    $ua->agent('Xenon');
+    $ua->agent("Xenon/$VERSION");
     $ua->env_proxy;
     $ua->timeout(60);
 
@@ -119,9 +121,16 @@ sub fetch {
     if ( defined $cache_dir ) {
         if ( !$cache_dir->is_dir ) {
             try {
-                $cache_dir->mkpath();
+
+                # Cache directory should only be accessible by user
+                # and group since there might be files with 'secret'
+                # content.
+
+                $cache_dir->mkpath( { mode => oct('0770') } );
             } catch {
-                warn "Failed to create cache directory '$cache_dir': $_\n";
+                $self->logger->warn("Failed to create cache directory '$cache_dir': $_");
+
+                # Attempt to continue without caching
                 $cache_dir = undef;
             };
         }
@@ -130,12 +139,7 @@ sub fetch {
     my $data;
     if ( defined $cache_dir ) {
 
-        # This is a simple way of getting a unique safe file name
-        # based on the URL
-
-        my $ctx = Digest->new('SHA-1');
-        $ctx->add($source->canonical);
-        my $cache_file = $cache_dir->child($ctx->hexdigest);
+        my $cache_file = $self->cache_file( $cache_dir, $source );
 
         if ( $cache_file->is_file ) {
             my $mtime = $cache_file->stat->mtime // 0;
@@ -149,13 +153,24 @@ sub fetch {
 
         my $code = $res->code();
         if ( $code == HTTP_OK ) {
-            # cache the content of the response
+
+            # cache the content of the response with a restricted
+            # umask in case there is anything 'secret' in there
+
+            my $old_umask = umask '0007';
             $cache_file->spew($res->decoded_content);
+            umask $old_umask;
+
         } elsif ( $code == HTTP_NOT_MODIFIED ) {
             $self->logger->debug("Using cached version of '$source'");
         } else {
+
+            # If the request failed and there is a previously cached
+            # version of the file then emit a warning and proceed with
+            # the old version.
+
             if ( $cache_file->is_file ) {
-                warn "Failed to fetch $source: " . $res->status_line . ", using cached data\n";
+                $self->logger->warn("Failed to fetch '$source': " . $res->status_line . ", using cached file");
             } else {
                 die "Failed to fetch $source: " . $res->status_line . "\n";
             }
@@ -174,6 +189,19 @@ sub fetch {
     }
 
     return $data;
+}
+
+sub cache_file {
+    my ( $self, $cache_dir, $source ) = @_;
+
+    # This is a simple way of getting a unique safe file name based on
+    # the URL
+
+    my $ctx = Digest->new('SHA-1');
+    $ctx->add($source->canonical);
+    my $cache_file = $cache_dir->child($ctx->hexdigest);
+
+    return $cache_file;
 }
 
 1;
