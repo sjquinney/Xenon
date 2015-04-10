@@ -153,7 +153,7 @@ sub BUILDARGS {
 
   # Support file names which have been URI escaped
   for my $key (qw/path source/) {
-      if ( Str->check($args{$key}) ) {
+      if ( exists $args{$key} && Str->check($args{$key}) ) {
           $args{$key} = URI::Escape::uri_unescape($args{$key});
       }
   }
