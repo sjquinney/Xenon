@@ -140,19 +140,21 @@ sub build {
 
         my $path = $self->path;
 
-        # Rather than using spew() we do this manually so that we can
-        # set the correct access controls on the new file and make the
-        # backup before we do the rename. Thus the final stage of
-        # doing the rename only happens if everything else has
-        # succeeded.
+	if ( $change_type == $CHANGE_UPDATED && !$self->clobber ) {
+	    $self->logger->info("Will not clobber existing file contents for '$path'");
+	    $change_type = $CHANGE_NONE;
+	} elsif ( $self->dryrun ) {
+	    $self->logger->info("Dry-run: Will write data to '$path'");
+	} else {
 
-        try {
+	    # Rather than using spew() we do this manually so that we can
+	    # set the correct access controls on the new file and make the
+	    # backup before we do the rename. Thus the final stage of
+	    # doing the rename only happens if everything else has
+	    # succeeded.
 
-	    if ( $change_type == $CHANGE_UPDATED && !$self->clobber ) {
-		$self->logger->info("Will not clobber existing file contents for '$path'");
-	    } elsif ( $self->dryrun ) {
-                $self->logger->info("Dry-run: Will write data to '$path'");
-            } else {
+	    try {
+
                 my $tmpfh = File::Temp->new( TEMPLATE => 'xenonXXXXXX',
                                              DIR      => $path->dirname,
                                              UNLINK   => 1 )
@@ -177,12 +179,11 @@ sub build {
                 rename $tempname, "$path"
                     or die "Could not rename temporary file: $OS_ERROR\n";
 
-            }
+	    } catch {
+		die "Failed to update '$path': $_";
+	    };
 
-        } catch {
-            die "Failed to update '$path': $_";
-        };
-
+	}
     }
 
     return ( $change_type, $digest );
