@@ -44,42 +44,35 @@ sub build {
     my $change_type = $CHANGE_NONE;
     try {
 
-        my $needs_update = 1;
-        if ( $linkname->exists ) {
+        if ( !$linkname->exists ) {
+	    $change_type = $CHANGE_CREATED;
+	} else {
             my $current = readlink "$linkname"
                 or die "Could not read symlink '$linkname': $OS_ERROR\n";
 
-            if ( $current eq "$target" ) {
-                $needs_update = 0;
-            } else {
+            if ( $current ne "$target" ) {
                 $self->logger->info("Update required for symlink '$linkname'");
-                $change_type = $CHANGE_UPDATED;
 
 		if ( !$self->clobber ) {
-		    $self->logger->info("Will not clobber existing symlink for '$path'");
+		    $self->logger->info("Will not clobber existing symlink '$linkname'");
 		} elsif ( $self->dryrun ) {
-                    $self->logger->info("Dry-run: Will remove symlink '$linkname'");
+                    $self->logger->info("Dry-run: Will update symlink '$linkname'");
                 } else {
+		    $change_type = $CHANGE_UPDATED;
+
                     $self->logger->info("Deleting symlink '$linkname' to '$current'");
                     $linkname->remove
                         or die "Could not remove old link '$linkname': $OS_ERROR\n";
                 }
 
             }
-        } else {
-            $change_type = $CHANGE_CREATED;
         }
 
-        if ($needs_update) {
+        if ( $change_type != $CHANGE_NONE ) {
             $self->logger->info("Creating symlink '$linkname' to '$target'");
 
-            if ( $self->dryrun ) {
-                $self->logger->info("Dry-run: Will create symlink '$linkname' to '$target'");
-            } else {
-                symlink "$target", "$linkname"
-                    or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
-            }
-
+	    symlink "$target", "$linkname"
+		or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
         }
 
     } catch {
