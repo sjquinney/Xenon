@@ -114,7 +114,7 @@ sub _build_pathtype {
 
     my $pathtype;
     if ( $self->path->is_file ) {
-        if ( -l $self->path->path ) {
+        if ( -l $self->path ) {
             $pathtype = 'link';
         } else {
             $pathtype = 'file';
