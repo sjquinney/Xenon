@@ -105,6 +105,12 @@ has 'dryrun' => (
     default => sub { 0 },
 );
 
+has 'clobber' => (
+    is      => 'rw',
+    isa     => Bool,
+    default => sub { 1 },
+);
+
 # Sensible default behaviour. Typically the class which implements
 # this role will provide a local version of the method which just
 # simply returns the correct path type.

@@ -55,7 +55,9 @@ sub build {
                 $self->logger->info("Update required for symlink '$linkname'");
                 $change_type = $CHANGE_UPDATED;
 
-                if ( $self->dryrun ) {
+		if ( !$self->clobber ) {
+		    $self->logger->info("Will not clobber existing symlink for '$path'");
+		} elsif ( $self->dryrun ) {
                     $self->logger->info("Dry-run: Will remove symlink '$linkname'");
                 } else {
                     $self->logger->info("Deleting symlink '$linkname' to '$current'");
