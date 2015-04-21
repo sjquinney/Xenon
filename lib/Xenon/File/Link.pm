@@ -55,25 +55,32 @@ sub build {
 
 		if ( !$self->clobber ) {
 		    $self->logger->info("Will not clobber existing symlink '$linkname'");
-		} elsif ( $self->dryrun ) {
-                    $self->logger->info("Dry-run: Will update symlink '$linkname'");
                 } else {
 		    $change_type = $CHANGE_UPDATED;
 
-                    $self->logger->info("Deleting symlink '$linkname' to '$current'");
-                    $linkname->remove
-                        or die "Could not remove old link '$linkname': $OS_ERROR\n";
+		    if ( !$self->dryrun ) {
+			$self->logger->info("Deleting symlink '$linkname' to '$current'");
+			$linkname->remove
+			    or die "Could not remove old link '$linkname': $OS_ERROR\n";
+		    }
+
                 }
 
             }
         }
 
         if ( $change_type != $CHANGE_NONE ) {
-            $self->logger->info("Creating symlink '$linkname' to '$target'");
 
-	    symlink "$target", "$linkname"
-		or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
-        }
+	    if ( $self->dryrun ) {
+		$self->logger->info("Dry-run: Will update symlink '$linkname' to '$target'");
+	    } else {
+
+		$self->logger->info("Creating symlink '$linkname' to '$target'");
+
+		symlink "$target", "$linkname"
+		    or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
+	    }
+	}
 
     } catch {
         die "Failed to configure symlink: $_";
