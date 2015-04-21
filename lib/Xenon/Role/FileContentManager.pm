@@ -148,7 +148,7 @@ sub build {
 
         try {
 
-	    if ( !$self->clobber ) {
+	    if ( $change_type == $CHANGE_UPDATED && !$self->clobber ) {
 		$self->logger->info("Will not clobber existing file contents for '$path'");
 	    } elsif ( $self->dryrun ) {
                 $self->logger->info("Dry-run: Will write data to '$path'");
