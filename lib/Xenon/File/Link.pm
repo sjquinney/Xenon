@@ -31,6 +31,29 @@ sub set_access_controls {
     return; # no-op
 }
 
+# Intentionally very similar to the method in the FileContentManager role
+
+sub change_type {
+    my ($self) = @_;
+
+    my $linkname = $self->path;
+    my $target   = $self->source;
+
+    my $change_type = $CHANGE_CREATED;
+    if ( $linkname->exists ) {
+        my $current = readlink "$linkname"
+            or die "Could not read symlink '$linkname': $OS_ERROR\n";
+
+        if ( $current eq "$target" ) {
+            $change_type = $CHANGE_NONE;
+        } else {
+            $change_type = $CHANGE_UPDATED;
+        }
+    }
+
+    return $change_type;
+}
+
 sub build {
     my ($self) = @_;
 
@@ -41,48 +64,40 @@ sub build {
         $self->logger->warn("Target '$target' does not exist for '$linkname'");
     }
 
-    my $change_type = $CHANGE_NONE;
-    try {
+    my $change_type = $self->change_type();
 
-        my $needs_update = 1;
-        if ( $linkname->exists ) {
-            my $current = readlink "$linkname"
-                or die "Could not read symlink '$linkname': $OS_ERROR\n";
+    if ( $change_type != $CHANGE_NONE ) {
+        $self->logger->info("Update required for symlink '$linkname'");
 
-            if ( $current eq "$target" ) {
-                $needs_update = 0;
-            } else {
-                $self->logger->info("Update required for symlink '$linkname'");
-                $change_type = $CHANGE_UPDATED;
+        if ( $change_type == $CHANGE_UPDATED && !$self->clobber ) {
+            $self->logger->info("Will not clobber existing symlink '$linkname'");
+            $change_type = $CHANGE_NONE;
+        } elsif ( $self->dryrun ) {
+            $self->logger->info("Dry-run: Will update symlink '$linkname' to '$target'");
+        } else {
 
-                if ( $self->dryrun ) {
-                    $self->logger->info("Dry-run: Will remove symlink '$linkname'");
-                } else {
-                    $self->logger->info("Deleting symlink '$linkname' to '$current'");
+            try {
+
+                # Need to remove old link first
+                if ( $change_type == $CHANGE_UPDATED ) {
+
+                    $self->logger->debug("Deleting old symlink '$linkname'");
                     $linkname->remove
                         or die "Could not remove old link '$linkname': $OS_ERROR\n";
                 }
 
-            }
-        } else {
-            $change_type = $CHANGE_CREATED;
-        }
+                $self->logger->debug("Creating symlink '$linkname' to '$target'");
 
-        if ($needs_update) {
-            $self->logger->info("Creating symlink '$linkname' to '$target'");
-
-            if ( $self->dryrun ) {
-                $self->logger->info("Dry-run: Will create symlink '$linkname' to '$target'");
-            } else {
                 symlink "$target", "$linkname"
                     or die "Could not symlink '$linkname' to '$target': $OS_ERROR\n";
-            }
 
-        }
+	    } catch {
+                die "Failed to configure symlink: $_";
+            };
 
-    } catch {
-        die "Failed to configure symlink: $_";
-    };
+	}
+
+    }
 
     return $change_type;
 }

@@ -44,10 +44,11 @@ has 'path' => (
 );
 
 has 'source' => (
-    is       => 'ro',
-    isa      => AbsPath,
-    coerce   => AbsPath->coercion,
-    required => 1,
+    is        => 'ro',
+    isa       => AbsPath,
+    coerce    => AbsPath->coercion,
+    required  => 1,
+    predicate => 'has_source',
 );
 
 has 'owner' => (
@@ -104,6 +105,12 @@ has 'dryrun' => (
     default => sub { 0 },
 );
 
+has 'clobber' => (
+    is      => 'rw',
+    isa     => Bool,
+    default => sub { 1 },
+);
+
 # Sensible default behaviour. Typically the class which implements
 # this role will provide a local version of the method which just
 # simply returns the correct path type.
@@ -113,7 +120,7 @@ sub _build_pathtype {
 
     my $pathtype;
     if ( $self->path->is_file ) {
-        if ( -l $self->path->path ) {
+        if ( -l $self->path ) {
             $pathtype = 'link';
         } else {
             $pathtype = 'file';
@@ -123,6 +130,21 @@ sub _build_pathtype {
     }
 
     return $pathtype;
+}
+
+sub BUILD {
+    my ($self) = @_;
+
+    if ( $self->has_source ) {
+        my $path   = $self->path;
+        my $source = $self->source;
+
+        if ( "$path" eq "$source" ) {
+            die "Path cannot be the same as the Source ($path)\n";
+        }
+    }
+
+    return;
 }
 
 sub BUILDARGS {
@@ -137,7 +159,7 @@ sub BUILDARGS {
 
   # Support file names which have been URI escaped
   for my $key (qw/path source/) {
-      if ( Str->check($args{$key}) ) {
+      if ( exists $args{$key} && Str->check($args{$key}) ) {
           $args{$key} = URI::Escape::uri_unescape($args{$key});
       }
   }
