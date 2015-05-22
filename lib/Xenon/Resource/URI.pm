@@ -7,7 +7,7 @@ our $VERSION = v1.0.0;
 use v5.10;
 
 use Digest ();
-use IO::Socket::SSL;
+use IO::Socket::SSL qw(SSL_VERIFY_NONE SSL_VERIFY_PEER);
 use HTTP::Request ();
 use HTTP::Status qw(HTTP_OK HTTP_NOT_MODIFIED);
 use LWP::UserAgent 6.03 ();
@@ -70,18 +70,7 @@ sub ssl_opts {
         $ca_file = $new_settings{ca_file};
     }
 
-    state $ca_path = do {
-        my $path = $ENV{PERL_LWP_SSL_CA_PATH} || $ENV{HTTPS_CA_DIR};
-        if ( !defined $path ) {
-            for my $dir ('/etc/ssl/certs', '/etc/pki/tls/certs' ) {
-                if ( -d $dir ) {
-                    $path = $dir;
-                    last;
-                }
-            }
-        }
-        $path;
-    };
+    state $ca_path = $ENV{PERL_LWP_SSL_CA_PATH} || $ENV{HTTPS_CA_DIR};
     if ( exists $new_settings{ca_path} ) {
         $ca_path = $new_settings{ca_path};
     }
@@ -91,9 +80,11 @@ sub ssl_opts {
         if ($verify_hostname) {
             $ssl_opts{SSL_ca_file} = $ca_file if defined $ca_file;
             $ssl_opts{SSL_ca_path} = $ca_path if defined $ca_path;
+
+            $ssl_opts{SSL_verify_mode} = SSL_VERIFY_PEER;
         } else {
             # Needed for IO::Socket::SSL
-            $ssl_opts{SSL_verify_mode} = 0x00;
+            $ssl_opts{SSL_verify_mode} = SSL_VERIFY_NONE;
         }
 
         return %ssl_opts;
