@@ -65,12 +65,38 @@ sub ssl_opts {
         $verify_hostname = $new_settings{verify_hostname};
     }
 
-    state $ca_file = $ENV{PERL_LWP_SSL_CA_FILE} || $ENV{HTTPS_CA_FILE};
+    # We try *really* hard to work out the best defaults for file and
+    # path.  Only one of the file or path is used, file always wins.
+
+    state $ca_file = do {
+        my $file = $ENV{PERL_LWP_SSL_CA_FILE} || $ENV{SSL_CERT_FILE} || $ENV{HTTPS_CA_FILE};
+        if ( !defined $file ) {
+            for my $path ( '/etc/pki/tls/certs/ca-bundle.crt', # Redhat
+                           '/etc/ssl/cert.pem' ) {
+                if ( -f $path ) {
+                    $file = $path;
+                    last;
+                }
+            }
+        }
+        $file;
+    };
     if ( exists $new_settings{ca_file} ) {
         $ca_file = $new_settings{ca_file};
     }
 
-    state $ca_path = $ENV{PERL_LWP_SSL_CA_PATH} || $ENV{HTTPS_CA_DIR};
+    state $ca_path = do {
+        my $path = $ENV{PERL_LWP_SSL_CA_PATH} || $ENV{SSL_CERT_DIR} || $ENV{HTTPS_CA_DIR};
+        if ( !defined $path ) {
+            for my $dir ( '/etc/pki/tls/certs', '/etc/ssl/certs/' ) {
+                if ( -d $dir ) {
+                    $path = $dir;
+                    last;
+                }
+            }
+        }
+        $path;
+    };
     if ( exists $new_settings{ca_path} ) {
         $ca_path = $new_settings{ca_path};
     }
@@ -78,8 +104,13 @@ sub ssl_opts {
     if (wantarray) {
         my %ssl_opts = ( verify_hostname => $verify_hostname );
         if ($verify_hostname) {
-            $ssl_opts{SSL_ca_file} = $ca_file if defined $ca_file;
-            $ssl_opts{SSL_ca_path} = $ca_path if defined $ca_path;
+
+            # Only SSL_ca_path xor SSL_ca_file should be given
+            if ( defined $ca_file ) {
+                $ssl_opts{SSL_ca_file} = $ca_file;
+            } elsif ( defined $ca_path ) {
+                $ssl_opts{SSL_ca_path} = $ca_path;
+            }
 
             $ssl_opts{SSL_verify_mode} = SSL_VERIFY_PEER;
         } else {
