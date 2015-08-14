@@ -7,11 +7,17 @@ use v5.10;
 our $VERSION = '@LCFG_VERSION@';
 
 use Moo;
-use Types::Standard qw(HashRef);
+use Types::Standard qw(Bool HashRef);
 
 with 'Xenon::Role::Env';
 
 use namespace::clean;
+
+has 'clear' => (
+    is      => 'ro',
+    isa     => Bool,
+    default => sub { 0 },
+);
 
 has 'vars' => (
     is      => 'ro',
@@ -21,6 +27,11 @@ has 'vars' => (
 
 sub run {
     my ($self) = @_;
+
+    if ( $self->clear ) {
+        $self->logger->debug('Clearing all environment variables');
+        %ENV = ();
+    }
 
     my %vars = %{ $self->vars };
     for my $key ( keys %vars ) {
