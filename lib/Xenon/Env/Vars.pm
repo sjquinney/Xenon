@@ -9,7 +9,7 @@ our $VERSION = '@LCFG_VERSION@';
 use Moo;
 use Types::Standard qw(Bool HashRef);
 
-with 'Xenon::Role::Env';
+with 'Xenon::Role::EnvHandler';
 
 use namespace::clean;
 

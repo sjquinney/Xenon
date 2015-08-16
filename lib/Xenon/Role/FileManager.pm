@@ -17,7 +17,7 @@ use Xenon::Types qw(UID GID UnixMode XenonAttributeManagerList);
 
 use Moo::Role;
 
-with 'Xenon::Role::Log4perl';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::EnvManager';
 
 requires 'path_type_is_correct', 'build', 'default_mode';
 
@@ -216,7 +216,9 @@ sub prebuild {
 sub configure {
     my ( $self, @build_args ) = @_;
 
-    $self->prebuild;
+    $self->initialise_environment();
+
+    $self->prebuild();
 
     my ($change_type) = $self->build(@build_args);
 

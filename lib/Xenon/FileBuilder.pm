@@ -6,7 +6,7 @@ use v5.10;
 
 use Moo;
 
-with 'Xenon::Role::Log4perl';
+with 'Xenon::Role::Log4perl', 'Xenon::Role::EnvManager';
 
 use File::Spec ();
 use Scalar::Util ();
@@ -124,6 +124,8 @@ sub add_files {
 
 sub configure {
     my ( $self, @build_args ) = @_;
+
+    $self->initialise_environment();
 
     my @changed_files;
 

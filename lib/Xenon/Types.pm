@@ -10,6 +10,7 @@ use Type::Library
                    XenonResource XenonBackupStyle XenonURI
                    XenonFileManager XenonFileManagerList
                    XenonRegistry
+                   XenonEnvHandler XenonEnvHandlerList
                    XenonAttributeManager XenonAttributeManagerList
                    XenonContentDecoder XenonContentDecoderList);
 
@@ -41,6 +42,36 @@ coerce XenonResource,
             Xenon::Resource::URI->new( source => $_ );
         }
 };
+
+role_type XenonEnvHandler, { role => 'Xenon::Role::EnvHandler' };
+
+coerce XenonEnvHandler,
+    from Str, via {
+        my ( $modname, $modargs ) = split /\s*:\s*/, $_, 2;
+        my $mod =
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Env' );
+        if ( defined $modargs ) {
+            $mod->new_from_json(\$modargs);
+        } else {
+            $mod->new();
+        }
+    },
+    from ArrayRef, via {
+        my ( $modname, @modargs ) = @{$_};
+        my $mod =
+            Xenon::TypeUtils::load_role_module( $modname, 'Xenon::Env' );
+        $mod->new(@modargs);
+};
+
+declare XenonEnvHandlerList,
+    as ArrayRef[XenonEnvHandler],
+    where { ArrayRef->check($_) &&
+                !grep { !is_XenonEnvHandler($_) } @{$_} },
+    message { 'Invalid list of environment managers' };
+
+coerce XenonEnvHandlerList,
+    from ArrayRef, via { [ map { to_XenonEnvHandler($_) } @{$_} ] },
+    from Str, via { [ map { to_XenonEnvHandler($_) } split /\s*\|\s*/, $_ ] };
 
 role_type XenonAttributeManager, { role => 'Xenon::Role::AttributeManager' };
 
