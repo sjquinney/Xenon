@@ -12,7 +12,7 @@ use File::Spec ();
 use IO::Pipe ();
 use Scalar::Util ();
 use Try::Tiny;
-use Types::Standard qw(ArrayRef Bool Str);
+use Types::Standard qw(ArrayRef Bool Int Str);
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use Xenon::Constants qw(:change);
@@ -49,6 +49,12 @@ has 'dryrun' => (
     is      => 'ro',
     isa     => Bool,
     default => sub { 0 },
+);
+
+has 'timeout' => (
+    is      => 'ro',
+    isa     => Int,
+    default => sub { 30 },
 );
 
 sub _build_files {
@@ -190,7 +196,9 @@ sub configure {
             return;
         };
 
-        my $status = eval { Xenon::Utils::fork_with_timeout( $do_work ) };
+        my $status = eval {
+            Xenon::Utils::fork_with_timeout( $do_work, $self->timeout );
+        };
 
         # Failures, such as timeouts, are caught here.
         if ( $@ || $status != 0 ) {
