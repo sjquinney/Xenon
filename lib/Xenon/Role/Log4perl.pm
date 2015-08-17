@@ -80,7 +80,7 @@ sub _build_logger {
     }
 
     my $class_name = ref $self;
-    my $logger = Log::Log4perl->get_logger($class_name);
+    my $logger = Log::Log4perl->get_logger('Xenon');
 
     # Raise the level when necessary
     if ( $self->debug && !$logger->is_debug ) {
