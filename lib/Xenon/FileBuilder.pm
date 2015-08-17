@@ -9,12 +9,14 @@ use Moo;
 with 'Xenon::Role::Log4perl', 'Xenon::Role::EnvManager';
 
 use File::Spec ();
+use IO::Pipe ();
 use Scalar::Util ();
 use Try::Tiny;
 use Types::Standard qw(ArrayRef Bool Str);
 use Types::Path::Tiny qw(AbsPath);
 use Xenon::Types qw(XenonFileManager XenonFileManagerList XenonRegistry);
 use Xenon::Constants qw(:change);
+use Xenon::Utils ();
 use namespace::clean;
 
 has 'files' => (
@@ -159,24 +161,73 @@ sub configure {
 
         $current_paths{"$path"} = $file;
 
-        try {
-            $self->logger->debug("Configuring path '$path'");
+        $self->logger->debug("Configuring path '$path'");
 
-            my ($change_type) = $file->configure(@build_args);
-            if ( $change_type != $CHANGE_NONE ) {
-                push @changed_files, $path;
-            }
+        # This is all a little complicated. The "configure" is run in
+        # a fork so that it is possible to enforce a timeout and also
+        # to ensure that it cannot mess with the current environment.
 
-            if ( $self->has_registry && !$self->dryrun ) {
-                $self->registry->register_path(
-                    $self->tag, $self->supercedes,
-                    $path, $file->permanent,
-                );
-            }
+        # Only way to get the result back to the parent is to use
+        # some form of inter-process communication. IO::Pipe is
+        # nice and simple and is a core module.
 
-        } catch {
-            $self->logger->error("Failed to configure path '$path': $_");
+        my $pipe = IO::Pipe->new();
+
+        my $do_work = sub {
+
+            $self->logger->debug("configure starting");
+            try {
+
+                my ($change_type) = $file->configure(@build_args);
+
+                $pipe->writer();
+                $pipe->say($change_type);
+            } catch {
+                $self->logger->error("Failed to configure path '$path': $_");
+                exit 1;
+            };
+
+            return;
         };
+
+        my $status = eval { Xenon::Utils::fork_with_timeout( $do_work ) };
+
+        # Failures, such as timeouts, are caught here.
+        if ( $@ || $status != 0 ) {
+            if ($@) {
+                if ( $@ =~ m/Process killed/ ) {
+                    die "$@";
+                } else {
+                    $self->logger->error("Failed to configure path '$path': $@");
+                }
+            }
+
+            # If a configure for a file has failed just move onto the next one.
+
+            next;
+        }
+
+        $pipe->reader();
+        my $change_type = $pipe->getline;
+        $pipe->close;
+
+        if ( !defined $change_type ) {
+            die "Process communication error\n";
+        }
+
+        chomp $change_type;
+
+        if ( $change_type != $CHANGE_NONE ) {
+            push @changed_files, $path;
+        }
+
+        if ( $self->has_registry && !$self->dryrun ) {
+            $self->registry->register_path(
+                $self->tag, $self->supercedes,
+                $path, $file->permanent,
+                );
+        }
+
     }
 
     # Delete files by leaves-first approach so there is some chance of

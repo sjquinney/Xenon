@@ -29,15 +29,6 @@ sub fork_with_timeout {
             exit 0;
         }
 
-        # Reap the worker process group if various signals are received.
-
-        my $killer = sub { say "Killing $worker_pid process group";
-                           kill -15, $worker_pid };
-        local $SIG{HUP}  = $killer;
-        local $SIG{TERM} = $killer;
-        local $SIG{INT}  = $killer;
-        local $SIG{QUIT} = $killer;
-
         my $watchdog_pid = fork();
         if ($watchdog_pid == 0) {
             my $endtime = time() + $timeout_time;
@@ -57,6 +48,14 @@ sub fork_with_timeout {
 
             exit 0;
         }
+
+        # Reap the worker process group if various signals are received.
+
+        my $killer = sub { kill -15, $worker_pid };
+        local $SIG{HUP}  = $killer;
+        local $SIG{TERM} = $killer;
+        local $SIG{INT}  = $killer;
+        local $SIG{QUIT} = $killer;
 
         my $exited_pid = wait();
         my $exit_status = $? >> 8;
@@ -89,10 +88,12 @@ sub fork_with_timeout {
 
     # Ensure the signals are passed on to the intermediate process
 
-    local $SIG{HUP}  = sub { kill 'HUP',  $intermediate_pid };
-    local $SIG{TERM} = sub { kill 'TERM', $intermediate_pid };
-    local $SIG{INT}  = sub { kill 'INT',  $intermediate_pid };
-    local $SIG{QUIT} = sub { kill 'QUIT', $intermediate_pid };
+    my $killer = sub { kill 'TERM',  $intermediate_pid;
+                       die "Process killed\n" };
+    local $SIG{HUP}  = $killer;
+    local $SIG{TERM} = $killer;
+    local $SIG{INT}  = $killer;
+    local $SIG{QUIT} = $killer;
 
     waitpid $intermediate_pid, 0;
     my $status = $? >> 8;
