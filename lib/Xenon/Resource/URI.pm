@@ -128,7 +128,7 @@ sub fetch {
 
     my $source = $self->source;
 
-    my $ua = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new( keep_alive => 1 );
     $ua->agent("Xenon/$VERSION");
     $ua->env_proxy;
     $ua->timeout(60);
