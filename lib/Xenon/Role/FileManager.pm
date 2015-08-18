@@ -9,11 +9,13 @@ Readonly my $ID_UNCHANGED => -1;
 
 use URI::Escape ();
 use English qw(-no_match_vars);
+use IO::Pipe ();
 use Try::Tiny;
 use Types::Path::Tiny qw(AbsPath);
-use Types::Standard qw(Bool Str);
+use Types::Standard qw(Bool Int Str);
 use Xenon::Constants qw(:change);
 use Xenon::Types qw(UID GID UnixMode XenonAttributeManagerList);
+use Xenon::Utils ();
 
 use Moo::Role;
 
@@ -109,6 +111,12 @@ has 'clobber' => (
     is      => 'rw',
     isa     => Bool,
     default => sub { 1 },
+);
+
+has 'timeout' => (
+    is      => 'ro',
+    isa     => Int,
+    default => sub { 30 },
 );
 
 # Sensible default behaviour. Typically the class which implements
@@ -216,17 +224,65 @@ sub prebuild {
 sub configure {
     my ( $self, @build_args ) = @_;
 
-    $self->initialise_environment();
+    my $path = $self->path;
 
-    $self->prebuild();
+    $self->logger->debug("Configuring path '$path'");
 
-    my ($change_type) = $self->build(@build_args);
+    # This is all a little complicated. The work of the "configure" is
+    # run in a fork so that it is possible to enforce a timeout and
+    # also to ensure that it cannot mess with the current environment.
 
-    my $file = $self->path;
+    # Only way to get the result back to the parent is to use some
+    # form of inter-process communication. IO::Pipe is nice and simple
+    # and is a core module.
+
+    my $pipe = IO::Pipe->new();
+
+    my $do_work = sub {
+
+        $pipe->writer();
+
+        eval {
+            $self->initialise_environment();
+
+            $self->prebuild();
+
+            my ($change_type) = $self->build(@build_args);
+
+            $pipe->say($change_type);
+        };
+        if ($@) {
+            $self->logger->error($@);
+            $pipe->say($@);
+            exit 1;
+        }
+
+        return;
+    };
+
+    my $status = Xenon::Utils::fork_with_timeout( $do_work, $self->timeout );
+
+    $pipe->reader();
+    my $msg = $pipe->getline;
+    $pipe->close;
+
+    if ( !defined $msg ) {
+        die "Internal process communication error\n";
+    }
+
+    if ( !defined $status || $status != 0 ) {
+        die "$msg";
+    }
+
+    my $change_type = $msg;
+    chomp $change_type;
+
     if ( $change_type == $CHANGE_CREATED ) {
-        $self->logger->info("Successfully created '$file'");
+        $self->logger->info("Successfully created '$path'");
     } elsif ( $change_type == $CHANGE_UPDATED ) {
-        $self->logger->info("Successfully updated '$file'");
+        $self->logger->info("Successfully updated '$path'");
+    } elsif ( $change_type == $CHANGE_NONE ) {
+        $self->logger->debug("No change required for '$path'");
     }
 
     return $change_type;

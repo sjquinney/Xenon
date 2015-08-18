@@ -24,9 +24,9 @@ sub fork_with_timeout {
         if ($worker_pid == 0) {
             setpgrp(0,0);
 
-            $work->();
+            eval { $work->() };
 
-            exit 0;
+            exit ( $@ ? 1 : 0 );
         }
 
         my $watchdog_pid = fork();
@@ -59,7 +59,6 @@ sub fork_with_timeout {
 
         my $exited_pid = wait();
         my $exit_status = $? >> 8;
-
         if ( $exited_pid == $worker_pid ) {
             kill 'KILL', $watchdog_pid;
         } else {
