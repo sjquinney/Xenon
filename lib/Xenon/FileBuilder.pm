@@ -160,7 +160,6 @@ sub configure {
         $current_paths{"$path"} = $file;
 
         try {
-            $self->logger->debug("Configuring path '$path'");
 
             my ($change_type) = $file->configure(@build_args);
             if ( $change_type != $CHANGE_NONE ) {
@@ -175,7 +174,7 @@ sub configure {
             }
 
         } catch {
-            $self->logger->error("Failed to configure path '$path': $_");
+            $self->logger->fatal("Failed to configure path '$path' (see logs)");
         };
     }
 
